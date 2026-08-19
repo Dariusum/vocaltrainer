@@ -43,6 +43,7 @@
     <string name="fader_master">Gesamtlautstärke</string>
     <string name="fader_user_vocal">Deine Stimme (bis 200 % verstärkbar)</string>
     <string name="fader_original_vocal">Original-Gesang</string>
+    <string name="fader_original_vocal_desc">Wirkt nur auf den geschätzten Gesangsanteil in der Mitte des Original-Tracks — Schlagzeug, Bass und breit gepannte Instrumente bleiben davon unberührt und bleiben gleich laut.</string>
     <string name="action_export">Exportieren</string>
     <string name="export_in_progress">Export läuft…</string>
     <string name="export_success">Export abgeschlossen</string>
