@@ -13,7 +13,9 @@ enum class PlaybackState { STOPPED, PLAYING, PAUSED }
 /**
  * Spielt einen einzelnen Track über [AudioTrack] im Streaming-Modus ab und wendet dabei
  * live die Gesangsreduzierung ([VocalReducer]) an — nur ein Vorhör-Regler, verändert
- * weder die Original-PCM noch das, was währenddessen aufgenommen wird.
+ * weder die Original-PCM noch das, was währenddessen aufgenommen wird. [vocalBandMid]
+ * muss vorab per [VocalBandFilter.computeVocalBandMid] berechnet worden sein (nur bei
+ * Stereo-Tracks nötig/vorhanden).
  */
 class LivePlaybackEngine {
 
@@ -33,7 +35,7 @@ class LivePlaybackEngine {
     private val _finished = MutableStateFlow(false)
     val finished: StateFlow<Boolean> = _finished.asStateFlow()
 
-    fun start(pcm: PcmAudio, startFrame: Int = 0) {
+    fun start(pcm: PcmAudio, vocalBandMid: FloatArray?, startFrame: Int = 0) {
         stop()
         _finished.value = false
         stopRequested.set(false)
@@ -64,8 +66,7 @@ class LivePlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val vocalReducer = VocalReducer(pcm.sampleRate)
-        val thread = Thread { playLoop(pcm, startFrame, track, bufferSize, vocalReducer) }
+        val thread = Thread { playLoop(pcm, vocalBandMid, startFrame, track, bufferSize) }
         thread.name = "LivePlaybackEngine"
         playThread = thread
         thread.start()
@@ -103,7 +104,7 @@ class LivePlaybackEngine {
         _state.value = PlaybackState.STOPPED
     }
 
-    private fun playLoop(pcm: PcmAudio, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int, vocalReducer: VocalReducer) {
+    private fun playLoop(pcm: PcmAudio, vocalBandMid: FloatArray?, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int) {
         val channelCount = pcm.channelCount
         val framesPerChunk = (bufferSizeBytes / 2 / channelCount).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * channelCount)
@@ -126,8 +127,8 @@ class LivePlaybackEngine {
             val framesThisChunk = minOf(framesPerChunk, pcm.frameCount - frame)
             val k = vocalReduction
 
-            if (channelCount == 2 && k > 0f) {
-                vocalReducer.applyCancellation(pcm.samples, scratch, frame, framesThisChunk, k)
+            if (channelCount == 2 && k > 0f && vocalBandMid != null) {
+                VocalReducer.applyCancellation(pcm.samples, vocalBandMid, scratch, frame, framesThisChunk, k)
             } else {
                 System.arraycopy(pcm.samples, frame * channelCount, scratch, 0, framesThisChunk * channelCount)
             }

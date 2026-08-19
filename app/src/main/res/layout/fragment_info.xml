@@ -95,15 +95,17 @@
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔉 Gesangsreduzierung — wie funktioniert das wirklich?" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:layout_marginBottom="10dp"
-                        android:text="Vocaltrainer verwendet die klassische »Mitte-Kanal-Auslöschung«: Was in der Stereo-Aufnahme mittig zwischen linkem und rechtem Kanal liegt (meist der Gesang), wird beim Hochziehen des Reglers herausgerechnet." />
+                        android:text="Vocaltrainer verwendet die klassische »Mitte-Kanal-Auslöschung«: Was in der Stereo-Aufnahme mittig zwischen linkem und rechtem Kanal liegt (meist der Gesang), wird beim Hochziehen des Reglers herausgerechnet — begrenzt auf ein einstellbares Frequenzband (Regler unter der Gesangsreduzierung, Standard 200–4000 Hz), damit möglichst nur der Gesang und nicht das gesamte mittig abgemischte Signal betroffen ist." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:textStyle="bold" android:layout_marginBottom="6dp"
                         android:text="Das ist eine Annäherung, keine echte KI-Stimmentrennung:" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
                         android:text="• Funktioniert nur bei echten Stereo-Aufnahmen mit mittig abgemischtem Gesang." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
                         android:text="• Funktioniert NICHT bei Mono-Dateien — der Regler ist dann deaktiviert." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Reduziert je nach Frequenzband auch andere mittig abgemischte Instrumente mit (z. B. Bass, Kick) — keine reine Gesangs-Entfernung." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4"
-                        android:text="• Reduziert oft auch andere mittig abgemischte Instrumente mit (z. B. Bass, Kick) — keine reine Gesangs-Entfernung." />
+                        android:text="• Über das Frequenzband lässt sich nachjustieren: schmaler stellen reduziert weniger Instrumente, breiter stellen erfasst mehr vom Gesang." />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

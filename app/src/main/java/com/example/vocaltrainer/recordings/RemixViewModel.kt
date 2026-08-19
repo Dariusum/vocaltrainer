@@ -10,9 +10,12 @@ import com.example.vocaltrainer.audio.MixGains
 import com.example.vocaltrainer.audio.PcmAudio
 import com.example.vocaltrainer.audio.PlaybackState
 import com.example.vocaltrainer.audio.RemixPlaybackEngine
+import com.example.vocaltrainer.audio.VocalBandFilter
+import com.example.vocaltrainer.audio.VocalBandSettings
 import com.example.vocaltrainer.audio.WavExporter
 import com.example.vocaltrainer.data.RecordingRepository
 import com.example.vocaltrainer.log.VocaltrainerLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.OutputStream
 
 sealed class RemixUiState {
@@ -43,8 +47,10 @@ class RemixViewModel(
 
     private val remixPlaybackEngine = RemixPlaybackEngine()
     private val audioFocus = AudioFocusCoordinator(application)
+    private val bandSettings = VocalBandSettings(application)
 
     private var original: PcmAudio? = null
+    private var vocalBandMid: FloatArray? = null
     private var userVocal: PcmAudio? = null
     private var persistJob: Job? = null
 
@@ -74,6 +80,9 @@ class RemixViewModel(
                 val (originalPcm, vocalPcm) = repository.loadProjectAudio(projectId)
                 original = originalPcm
                 userVocal = vocalPcm
+                vocalBandMid = withContext(Dispatchers.Default) {
+                    VocalBandFilter.computeVocalBandMid(originalPcm, bandSettings.lowHz, bandSettings.highHz)
+                }
                 _gains.value = MixGains(
                     master = project.lastFaderMaster,
                     userVocal = project.lastFaderUserVocal,
@@ -90,6 +99,7 @@ class RemixViewModel(
 
     fun togglePlayPause() {
         val o = original ?: return
+        val band = vocalBandMid ?: return
         val v = userVocal ?: return
         when (playbackState.value) {
             PlaybackState.PLAYING -> remixPlaybackEngine.pause()
@@ -99,7 +109,7 @@ class RemixViewModel(
                     onLoss = { remixPlaybackEngine.pause() },
                     onGain = { remixPlaybackEngine.resume() }
                 )
-                remixPlaybackEngine.start(o, v, _gains.value)
+                remixPlaybackEngine.start(o, band, v, _gains.value)
             }
         }
     }
@@ -112,12 +122,13 @@ class RemixViewModel(
     /** Startet die Mix-Vorschau von vorne, unabhängig vom aktuellen Wiedergabestatus. */
     fun restart() {
         val o = original ?: return
+        val band = vocalBandMid ?: return
         val v = userVocal ?: return
         audioFocus.requestFocus(
             onLoss = { remixPlaybackEngine.pause() },
             onGain = { remixPlaybackEngine.resume() }
         )
-        remixPlaybackEngine.start(o, v, _gains.value)
+        remixPlaybackEngine.start(o, band, v, _gains.value)
     }
 
     fun setGains(newGains: MixGains) {
@@ -134,12 +145,13 @@ class RemixViewModel(
 
     fun export(out: OutputStream) {
         val o = original ?: return
+        val band = vocalBandMid ?: return
         val v = userVocal ?: return
         VocaltrainerLogger.i("RemixViewModel", "Export gestartet für $projectId, gains=${_gains.value}")
         _isExporting.value = true
         viewModelScope.launch {
             try {
-                WavExporter.export(o, v, _gains.value, out)
+                WavExporter.export(o, band, v, _gains.value, out)
                 VocaltrainerLogger.i("RemixViewModel", "Export erfolgreich für $projectId")
                 _events.emit(RemixEvent.ExportSuccess)
             } catch (e: Exception) {

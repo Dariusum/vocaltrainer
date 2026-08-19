@@ -10,24 +10,23 @@ data class MixGains(val master: Float, val userVocal: Float, val originalVocal: 
 /**
  * Misch-Mathematik, geteilt zwischen Live-Remix-Wiedergabe und Export — beide rufen
  * exakt dieselbe Funktion auf, damit Vorschau und exportierte Datei garantiert
- * übereinstimmen. Der "Original-Gesang"-Fader nutzt dieselbe frequenzband-begrenzte
- * Mitte-Kanal-Auslöschung wie der Vorhör-Regler im Wiedergabe-Tab (siehe
- * [VocalBandFilter]), nur mit invertiertem Parameter (k = 1 - originalVocalFader).
- * Hält Filterzustand, daher pro abzuspielender/zu exportierender Spur einmal
- * erzeugen und für alle Chunks dieser Spur wiederverwenden.
+ * übereinstimmen. Der "Original-Gesang"-Fader nutzt dieselbe vorberechnete,
+ * phasenfehlerfreie Mitte-Kanal-Auslöschung wie der Vorhör-Regler im Wiedergabe-Tab
+ * (siehe [VocalBandFilter]), nur mit invertiertem Parameter (k = 1 - originalVocalFader).
  */
-class AudioMixer(sampleRate: Int) {
-
-    private val bandFilter = VocalBandFilter(sampleRate)
+object AudioMixer {
 
     /**
      * [original]: interleaviertes Stereo-PCM des unveränderten Original-Tracks.
+     * [vocalBandMid]: vorberechnetes, phasenfehlerfreies Gesangsband für [original]
+     * (siehe [VocalBandFilter.computeVocalBandMid]).
      * [userVocal]: mono PCM der Aufnahme (kann kürzer als der Track sein — fehlende
      * Abschnitte werden als Stille behandelt, nie länger als der Original-Track).
      * Schreibt [frames] Stereo-Frames ab [offsetFrames] nach [out] (ab Index 0).
      */
     fun renderChunk(
         original: ShortArray,
+        vocalBandMid: FloatArray,
         userVocal: ShortArray,
         offsetFrames: Int,
         frames: Int,
@@ -40,10 +39,9 @@ class AudioMixer(sampleRate: Int) {
             val oi = frame * 2
             val l = original[oi].toInt()
             val r = original[oi + 1].toInt()
-            val mid = (l + r) / 2.0
-            val vocalBand = bandFilter.process(mid)
-            val vocalReducedL = l - k * vocalBand
-            val vocalReducedR = r - k * vocalBand
+            val band = vocalBandMid[frame]
+            val vocalReducedL = l - k * band
+            val vocalReducedR = r - k * band
             val userSample = if (frame < userVocal.size) userVocal[frame].toInt() else 0
 
             out[i * 2] = VocalReducer.clampToShort(gains.master * (vocalReducedL + gains.userVocal * userSample))

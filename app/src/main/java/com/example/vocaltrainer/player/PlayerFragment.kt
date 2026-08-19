@@ -68,6 +68,13 @@ class PlayerFragment : Fragment() {
 
         binding.switchLoop.setOnCheckedChangeListener { _, checked -> viewModel.setLoopEnabled(checked) }
 
+        binding.rangeSliderBand.addOnChangeListener { slider, _, fromUser ->
+            if (fromUser) {
+                val values = slider.values
+                viewModel.setBandRange(values[0], values[1])
+            }
+        }
+
         binding.btnRecord.setOnClickListener {
             if (viewModel.isRecording.value) {
                 viewModel.stopRecording()
@@ -108,6 +115,35 @@ class PlayerFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.events.collect { event -> handleEvent(event) }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.bandLowHz.collect { low ->
+                if (binding.rangeSliderBand.values.getOrNull(0) != low) {
+                    binding.rangeSliderBand.setValues(low, viewModel.bandHighHz.value)
+                }
+                updateBandRangeLabel()
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.bandHighHz.collect { high ->
+                if (binding.rangeSliderBand.values.getOrNull(1) != high) {
+                    binding.rangeSliderBand.setValues(viewModel.bandLowHz.value, high)
+                }
+                updateBandRangeLabel()
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isRecalculatingBand.collect { recalculating -> updateBandRangeLabel(recalculating) }
+        }
+    }
+
+    private fun updateBandRangeLabel(recalculating: Boolean = viewModel.isRecalculatingBand.value) {
+        val low = viewModel.bandLowHz.value.toInt()
+        val high = viewModel.bandHighHz.value.toInt()
+        binding.tvBandRange.text = if (recalculating) {
+            "${getString(R.string.label_band_range)}: $low–$high Hz (${getString(R.string.band_recalculating)})"
+        } else {
+            "${getString(R.string.label_band_range)}: $low–$high Hz"
         }
     }
 

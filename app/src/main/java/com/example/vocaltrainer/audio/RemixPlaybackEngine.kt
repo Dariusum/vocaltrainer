@@ -27,7 +27,13 @@ class RemixPlaybackEngine {
     private val _finished = MutableStateFlow(false)
     val finished: StateFlow<Boolean> = _finished.asStateFlow()
 
-    fun start(original: PcmAudio, userVocal: PcmAudio, initialGains: MixGains, startFrame: Int = 0) {
+    fun start(
+        original: PcmAudio,
+        vocalBandMid: FloatArray,
+        userVocal: PcmAudio,
+        initialGains: MixGains,
+        startFrame: Int = 0
+    ) {
         stop()
         gains = initialGains
         _finished.value = false
@@ -60,8 +66,7 @@ class RemixPlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val audioMixer = AudioMixer(original.sampleRate)
-        val thread = Thread { playLoop(original, userVocal, startFrame, track, bufferSize, audioMixer) }
+        val thread = Thread { playLoop(original, vocalBandMid, userVocal, startFrame, track, bufferSize) }
         thread.name = "RemixPlaybackEngine"
         playThread = thread
         thread.start()
@@ -101,11 +106,11 @@ class RemixPlaybackEngine {
 
     private fun playLoop(
         original: PcmAudio,
+        vocalBandMid: FloatArray,
         userVocal: PcmAudio,
         startFrame: Int,
         track: AudioTrack,
-        bufferSizeBytes: Int,
-        audioMixer: AudioMixer
+        bufferSizeBytes: Int
     ) {
         val framesPerChunk = (bufferSizeBytes / 2 / 2).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * 2)
@@ -126,7 +131,7 @@ class RemixPlaybackEngine {
                 continue
             }
             val framesThisChunk = minOf(framesPerChunk, original.frameCount - frame)
-            audioMixer.renderChunk(original.samples, userVocal.samples, frame, framesThisChunk, gains, scratch)
+            AudioMixer.renderChunk(original.samples, vocalBandMid, userVocal.samples, frame, framesThisChunk, gains, scratch)
             track.write(scratch, 0, framesThisChunk * 2)
             frame += framesThisChunk
             _positionFrames.value = frame

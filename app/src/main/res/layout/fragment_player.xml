@@ -113,6 +113,29 @@
             android:value="0"
             android:enabled="false" />
 
+        <TextView
+            android:id="@+id/tvBandRange"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textStyle="bold"
+            tools:text="Frequenzband: 200–4000 Hz" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="@string/band_range_desc" />
+
+        <com.google.android.material.slider.RangeSlider
+            android:id="@+id/rangeSliderBand"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stepSize="50"
+            android:valueFrom="50"
+            android:valueTo="8000" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRecord"
             android:layout_width="match_parent"

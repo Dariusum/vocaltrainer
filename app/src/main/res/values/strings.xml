@@ -21,6 +21,9 @@
     <string name="decode_error">Datei konnte nicht geladen werden</string>
     <string name="action_restart">Von vorne</string>
     <string name="label_loop">Schleife</string>
+    <string name="band_range_desc">Nur dieser Frequenzbereich wird bei der Gesangsreduzierung ausgelöscht — z.B. verbreitern, wenn noch zu viel Gesang übrig bleibt, oder verschmälern, wenn zu viele Instrumente betroffen sind.</string>
+    <string name="label_band_range">Frequenzband</string>
+    <string name="band_recalculating">wird neu berechnet…</string>
 
     <!-- Speichern-Dialog -->
     <string name="save_recording_title">Aufnahme speichern</string>
