@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class RemixPlaybackEngine {
 
     @Volatile private var gains: MixGains = MixGains.FULL
+    @Volatile private var loopEnabled: Boolean = false
     private var audioTrack: AudioTrack? = null
     private var playThread: Thread? = null
     private val stopRequested = AtomicBoolean(false)
@@ -59,7 +60,8 @@ class RemixPlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val thread = Thread { playLoop(original, userVocal, startFrame, track, bufferSize) }
+        val audioMixer = AudioMixer(original.sampleRate)
+        val thread = Thread { playLoop(original, userVocal, startFrame, track, bufferSize, audioMixer) }
         thread.name = "RemixPlaybackEngine"
         playThread = thread
         thread.start()
@@ -67,6 +69,10 @@ class RemixPlaybackEngine {
 
     fun setGains(newGains: MixGains) {
         gains = newGains
+    }
+
+    fun setLoopEnabled(enabled: Boolean) {
+        loopEnabled = enabled
     }
 
     fun pause() {
@@ -93,24 +99,37 @@ class RemixPlaybackEngine {
         _state.value = PlaybackState.STOPPED
     }
 
-    private fun playLoop(original: PcmAudio, userVocal: PcmAudio, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int) {
+    private fun playLoop(
+        original: PcmAudio,
+        userVocal: PcmAudio,
+        startFrame: Int,
+        track: AudioTrack,
+        bufferSizeBytes: Int,
+        audioMixer: AudioMixer
+    ) {
         val framesPerChunk = (bufferSizeBytes / 2 / 2).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * 2)
         var frame = startFrame
 
-        while (!stopRequested.get() && frame < original.frameCount) {
+        while (!stopRequested.get()) {
+            if (frame >= original.frameCount) {
+                if (loopEnabled) {
+                    frame = 0
+                    continue
+                } else {
+                    _finished.value = true
+                    return
+                }
+            }
             if (pauseRequested.get()) {
                 Thread.sleep(20)
                 continue
             }
             val framesThisChunk = minOf(framesPerChunk, original.frameCount - frame)
-            AudioMixer.renderChunk(original.samples, userVocal.samples, frame, framesThisChunk, gains, scratch)
+            audioMixer.renderChunk(original.samples, userVocal.samples, frame, framesThisChunk, gains, scratch)
             track.write(scratch, 0, framesThisChunk * 2)
             frame += framesThisChunk
             _positionFrames.value = frame
-        }
-        if (!stopRequested.get()) {
-            _finished.value = true
         }
     }
 }

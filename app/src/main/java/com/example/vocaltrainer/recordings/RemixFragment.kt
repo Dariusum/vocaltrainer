@@ -54,7 +54,9 @@ class RemixFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
+        binding.btnRestart.setOnClickListener { viewModel.restart() }
         binding.btnExport.setOnClickListener { exportLauncher.launch("${sanitizedTitle()}-mix.wav") }
+        binding.switchLoop.setOnCheckedChangeListener { _, checked -> viewModel.setLoopEnabled(checked) }
 
         val listener = Slider.OnChangeListener { _, _, fromUser -> if (fromUser) emitGains() }
         binding.sliderMaster.addOnChangeListener(listener)
@@ -92,12 +94,14 @@ class RemixFragment : Fragment() {
             is RemixUiState.Loading -> {
                 binding.progressLoading.visibility = View.VISIBLE
                 binding.btnPlayPause.isEnabled = false
+                binding.btnRestart.isEnabled = false
                 binding.btnExport.isEnabled = false
             }
             is RemixUiState.Ready -> {
                 binding.progressLoading.visibility = View.GONE
                 binding.tvTitle.text = state.title
                 binding.btnPlayPause.isEnabled = true
+                binding.btnRestart.isEnabled = true
                 binding.btnExport.isEnabled = true
             }
             is RemixUiState.Error -> {

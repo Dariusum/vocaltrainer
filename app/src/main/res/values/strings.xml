@@ -19,6 +19,8 @@
     <string name="record_permission_denied">Ohne Mikrofonzugriff kann nicht aufgenommen werden</string>
     <string name="decode_in_progress">Datei wird geladen…</string>
     <string name="decode_error">Datei konnte nicht geladen werden</string>
+    <string name="action_restart">Von vorne</string>
+    <string name="label_loop">Schleife</string>
 
     <!-- Speichern-Dialog -->
     <string name="save_recording_title">Aufnahme speichern</string>
@@ -45,4 +47,15 @@
 
     <!-- Hilfe -->
     <string name="settings_version">Version %s</string>
+    <string name="github_version">GitHub-Version: %s</string>
+    <string name="action_view_releases">Neueste Version auf GitHub ansehen</string>
+
+    <!-- Diagnose -->
+    <string name="settings_diagnostics_title">Diagnose</string>
+    <string name="settings_diagnostics_desc">Log-Datei zur Fehlersuche (z.B. bei Abstürzen)</string>
+    <string name="action_view_log">Log ansehen</string>
+    <string name="action_share_log">Log teilen</string>
+    <string name="action_clear_log">Log leeren</string>
+    <string name="log_dialog_title">Log</string>
+    <string name="log_cleared">Log geleert</string>
 </resources>

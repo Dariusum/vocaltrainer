@@ -22,11 +22,12 @@ object WavExporter {
             val tempFile = File.createTempFile("vocaltrainer_export", ".wav")
             try {
                 val writer = WavFileWriter(tempFile, original.sampleRate, 2)
+                val audioMixer = AudioMixer(original.sampleRate)
                 val scratch = ShortArray(CHUNK_FRAMES * 2)
                 var frame = 0
                 while (frame < original.frameCount) {
                     val framesThisChunk = minOf(CHUNK_FRAMES, original.frameCount - frame)
-                    AudioMixer.renderChunk(original.samples, userVocal.samples, frame, framesThisChunk, gains, scratch)
+                    audioMixer.renderChunk(original.samples, userVocal.samples, frame, framesThisChunk, gains, scratch)
                     writer.writeFrames(scratch, 0, framesThisChunk * 2)
                     frame += framesThisChunk
                 }

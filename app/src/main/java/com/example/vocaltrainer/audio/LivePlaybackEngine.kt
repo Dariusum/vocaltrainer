@@ -18,6 +18,7 @@ enum class PlaybackState { STOPPED, PLAYING, PAUSED }
 class LivePlaybackEngine {
 
     @Volatile private var vocalReduction: Float = 0f
+    @Volatile private var loopEnabled: Boolean = false
     private var audioTrack: AudioTrack? = null
     private var playThread: Thread? = null
     private val stopRequested = AtomicBoolean(false)
@@ -63,7 +64,8 @@ class LivePlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val thread = Thread { playLoop(pcm, startFrame, track, bufferSize) }
+        val vocalReducer = VocalReducer(pcm.sampleRate)
+        val thread = Thread { playLoop(pcm, startFrame, track, bufferSize, vocalReducer) }
         thread.name = "LivePlaybackEngine"
         playThread = thread
         thread.start()
@@ -71,6 +73,10 @@ class LivePlaybackEngine {
 
     fun setVocalReduction(k: Float) {
         vocalReduction = k.coerceIn(0f, 1f)
+    }
+
+    fun setLoopEnabled(enabled: Boolean) {
+        loopEnabled = enabled
     }
 
     fun pause() {
@@ -97,13 +103,22 @@ class LivePlaybackEngine {
         _state.value = PlaybackState.STOPPED
     }
 
-    private fun playLoop(pcm: PcmAudio, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int) {
+    private fun playLoop(pcm: PcmAudio, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int, vocalReducer: VocalReducer) {
         val channelCount = pcm.channelCount
         val framesPerChunk = (bufferSizeBytes / 2 / channelCount).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * channelCount)
         var frame = startFrame
 
-        while (!stopRequested.get() && frame < pcm.frameCount) {
+        while (!stopRequested.get()) {
+            if (frame >= pcm.frameCount) {
+                if (loopEnabled) {
+                    frame = 0
+                    continue
+                } else {
+                    _finished.value = true
+                    return
+                }
+            }
             if (pauseRequested.get()) {
                 Thread.sleep(20)
                 continue
@@ -112,16 +127,13 @@ class LivePlaybackEngine {
             val k = vocalReduction
 
             if (channelCount == 2 && k > 0f) {
-                VocalReducer.applyCancellation(pcm.samples, scratch, frame, framesThisChunk, k)
+                vocalReducer.applyCancellation(pcm.samples, scratch, frame, framesThisChunk, k)
             } else {
                 System.arraycopy(pcm.samples, frame * channelCount, scratch, 0, framesThisChunk * channelCount)
             }
             track.write(scratch, 0, framesThisChunk * channelCount)
             frame += framesThisChunk
             _positionFrames.value = frame
-        }
-        if (!stopRequested.get()) {
-            _finished.value = true
         }
     }
 }

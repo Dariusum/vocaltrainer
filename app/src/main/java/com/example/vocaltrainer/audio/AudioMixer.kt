@@ -8,11 +8,17 @@ data class MixGains(val master: Float, val userVocal: Float, val originalVocal: 
 }
 
 /**
- * Reine Misch-Mathematik, geteilt zwischen Live-Remix-Wiedergabe und Export — beide
- * rufen exakt dieselbe Funktion auf, damit Vorschau und exportierte Datei garantiert
- * übereinstimmen.
+ * Misch-Mathematik, geteilt zwischen Live-Remix-Wiedergabe und Export — beide rufen
+ * exakt dieselbe Funktion auf, damit Vorschau und exportierte Datei garantiert
+ * übereinstimmen. Der "Original-Gesang"-Fader nutzt dieselbe frequenzband-begrenzte
+ * Mitte-Kanal-Auslöschung wie der Vorhör-Regler im Wiedergabe-Tab (siehe
+ * [VocalBandFilter]), nur mit invertiertem Parameter (k = 1 - originalVocalFader).
+ * Hält Filterzustand, daher pro abzuspielender/zu exportierender Spur einmal
+ * erzeugen und für alle Chunks dieser Spur wiederverwenden.
  */
-object AudioMixer {
+class AudioMixer(sampleRate: Int) {
+
+    private val bandFilter = VocalBandFilter(sampleRate)
 
     /**
      * [original]: interleaviertes Stereo-PCM des unveränderten Original-Tracks.
@@ -34,9 +40,10 @@ object AudioMixer {
             val oi = frame * 2
             val l = original[oi].toInt()
             val r = original[oi + 1].toInt()
-            val mid = (l + r) / 2
-            val vocalReducedL = l - k * mid
-            val vocalReducedR = r - k * mid
+            val mid = (l + r) / 2.0
+            val vocalBand = bandFilter.process(mid)
+            val vocalReducedL = l - k * vocalBand
+            val vocalReducedR = r - k * vocalBand
             val userSample = if (frame < userVocal.size) userVocal[frame].toInt() else 0
 
             out[i * 2] = VocalReducer.clampToShort(gains.master * (vocalReducedL + gains.userVocal * userSample))

@@ -60,10 +60,13 @@ class PlayerFragment : Fragment() {
 
         binding.btnPickFile.setOnClickListener { filePicker.launch("audio/*") }
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
+        binding.btnRestart.setOnClickListener { viewModel.restart() }
 
         binding.sliderVocalReduction.addOnChangeListener { _, value, fromUser ->
             if (fromUser) viewModel.setVocalReduction(value / 100f)
         }
+
+        binding.switchLoop.setOnCheckedChangeListener { _, checked -> viewModel.setLoopEnabled(checked) }
 
         binding.btnRecord.setOnClickListener {
             if (viewModel.isRecording.value) {
@@ -94,6 +97,7 @@ class PlayerFragment : Fragment() {
                 )
                 binding.tvRecordingStatus.visibility = if (recording) View.VISIBLE else View.GONE
                 binding.btnPickFile.isEnabled = !recording
+                binding.btnRestart.isEnabled = !recording && viewModel.trackState.value is TrackUiState.Loaded
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -113,6 +117,7 @@ class PlayerFragment : Fragment() {
                 binding.progressLoading.visibility = View.GONE
                 binding.tvTrackName.text = getString(R.string.player_no_track)
                 binding.btnPlayPause.isEnabled = false
+                binding.btnRestart.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
                 binding.btnRecord.isEnabled = false
                 binding.tvMonoWarning.visibility = View.GONE
@@ -122,6 +127,7 @@ class PlayerFragment : Fragment() {
                 binding.progressLoading.visibility = View.VISIBLE
                 binding.tvTrackName.text = getString(R.string.decode_in_progress)
                 binding.btnPlayPause.isEnabled = false
+                binding.btnRestart.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
                 binding.btnRecord.isEnabled = false
             }
@@ -130,6 +136,7 @@ class PlayerFragment : Fragment() {
                 binding.tvTrackName.text = state.fileName
                 binding.waveformView.setPeaks(state.peaks)
                 binding.btnPlayPause.isEnabled = true
+                binding.btnRestart.isEnabled = true
                 binding.btnRecord.isEnabled = true
                 val isStereo = state.pcm.channelCount == 2
                 binding.sliderVocalReduction.isEnabled = isStereo

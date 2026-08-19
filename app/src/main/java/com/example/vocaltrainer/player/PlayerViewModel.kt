@@ -15,6 +15,7 @@ import com.example.vocaltrainer.audio.PlaybackState
 import com.example.vocaltrainer.audio.TrackDecoder
 import com.example.vocaltrainer.audio.VocalRecorder
 import com.example.vocaltrainer.data.RecordingRepository
+import com.example.vocaltrainer.log.VocaltrainerLogger
 import com.example.vocaltrainer.ui.widget.WaveformPeaks
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -60,6 +61,9 @@ class PlayerViewModel(
     private val _vocalReduction = MutableStateFlow(0f)
     val vocalReduction: StateFlow<Float> = _vocalReduction.asStateFlow()
 
+    private val _loopEnabled = MutableStateFlow(false)
+    val loopEnabled: StateFlow<Boolean> = _loopEnabled.asStateFlow()
+
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
 
@@ -76,6 +80,7 @@ class PlayerViewModel(
     }
 
     fun pickFile(uri: Uri) {
+        VocaltrainerLogger.i("PlayerViewModel", "Datei ausgewählt: $uri")
         livePlaybackEngine.stop()
         _trackState.value = TrackUiState.Loading
         viewModelScope.launch {
@@ -83,9 +88,14 @@ class PlayerViewModel(
                 val pcm = TrackDecoder.decode(getApplication(), uri)
                 val peaks = WaveformPeaks.compute(pcm)
                 val fileName = queryFileName(uri) ?: "Track"
+                VocaltrainerLogger.i(
+                    "PlayerViewModel",
+                    "Dekodiert: $fileName, ${pcm.sampleRate}Hz, ${pcm.channelCount}ch, ${pcm.durationMs}ms"
+                )
                 _trackState.value = TrackUiState.Loaded(pcm, peaks, fileName)
                 _vocalReduction.value = 0f
             } catch (e: Exception) {
+                VocaltrainerLogger.e("PlayerViewModel", "Fehler beim Dekodieren von $uri", e)
                 _trackState.value = TrackUiState.Error(e.message ?: "Fehler beim Laden")
             }
         }
@@ -113,6 +123,23 @@ class PlayerViewModel(
         livePlaybackEngine.setVocalReduction(value)
     }
 
+    fun setLoopEnabled(enabled: Boolean) {
+        _loopEnabled.value = enabled
+        livePlaybackEngine.setLoopEnabled(enabled)
+    }
+
+    /** Startet den aktuell geladenen Track von vorne, unabhängig vom aktuellen Wiedergabestatus. */
+    fun restart() {
+        val state = _trackState.value
+        if (state !is TrackUiState.Loaded || _isRecording.value) return
+        audioFocus.requestFocus(
+            onLoss = { livePlaybackEngine.pause() },
+            onGain = { livePlaybackEngine.resume() }
+        )
+        livePlaybackEngine.setVocalReduction(_vocalReduction.value)
+        livePlaybackEngine.start(state.pcm)
+    }
+
     /**
      * Aufrufer (PlayerFragment) müssen RECORD_AUDIO bereits gewährt haben, bevor diese
      * Methode erreicht wird — entweder über den direkten ContextCompat-Check oder über
@@ -123,6 +150,7 @@ class PlayerViewModel(
     fun startRecording() {
         val state = _trackState.value
         if (state !is TrackUiState.Loaded || _isRecording.value) return
+        VocaltrainerLogger.i("PlayerViewModel", "Aufnahme gestartet für ${state.fileName}")
 
         audioFocus.requestFocus(onLoss = { stopRecording() }, onGain = {})
         livePlaybackEngine.setVocalReduction(_vocalReduction.value)
@@ -150,6 +178,7 @@ class PlayerViewModel(
         val recorder = vocalRecorder ?: return
         vocalRecorder = null
         val file = recorder.stop() ?: return
+        VocaltrainerLogger.i("PlayerViewModel", "Aufnahme gestoppt, temporäre Datei: ${file.absolutePath}")
         viewModelScope.launch {
             _events.emit(PlayerEvent.PendingSave(file, defaultTitle()))
         }
@@ -161,14 +190,17 @@ class PlayerViewModel(
         viewModelScope.launch {
             try {
                 val project = repository.saveProject(title, state.pcm, tempFile)
+                VocaltrainerLogger.i("PlayerViewModel", "Aufnahme gespeichert: ${project.id} (\"${project.title}\")")
                 _events.emit(PlayerEvent.NavigateToRemix(project.id))
             } catch (e: Exception) {
+                VocaltrainerLogger.e("PlayerViewModel", "Speichern fehlgeschlagen", e)
                 _events.emit(PlayerEvent.Error(e.message ?: "Speichern fehlgeschlagen"))
             }
         }
     }
 
     fun discardRecording(tempFile: File) {
+        VocaltrainerLogger.i("PlayerViewModel", "Aufnahme verworfen: ${tempFile.absolutePath}")
         tempFile.delete()
     }
 

@@ -12,6 +12,7 @@ import com.example.vocaltrainer.audio.PlaybackState
 import com.example.vocaltrainer.audio.RemixPlaybackEngine
 import com.example.vocaltrainer.audio.WavExporter
 import com.example.vocaltrainer.data.RecordingRepository
+import com.example.vocaltrainer.log.VocaltrainerLogger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -56,6 +57,9 @@ class RemixViewModel(
     private val _isExporting = MutableStateFlow(false)
     val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
 
+    private val _loopEnabled = MutableStateFlow(false)
+    val loopEnabled: StateFlow<Boolean> = _loopEnabled.asStateFlow()
+
     val playbackState: StateFlow<PlaybackState> = remixPlaybackEngine.state
     val positionFrames: StateFlow<Int> = remixPlaybackEngine.positionFrames
 
@@ -76,7 +80,9 @@ class RemixViewModel(
                     originalVocal = project.lastFaderOriginalVocal
                 )
                 _uiState.value = RemixUiState.Ready(project.title)
+                VocaltrainerLogger.i("RemixViewModel", "Projekt geladen: $projectId (\"${project.title}\")")
             } catch (e: Exception) {
+                VocaltrainerLogger.e("RemixViewModel", "Projekt konnte nicht geladen werden: $projectId", e)
                 _uiState.value = RemixUiState.Error(e.message ?: "Aufnahme konnte nicht geladen werden")
             }
         }
@@ -98,6 +104,22 @@ class RemixViewModel(
         }
     }
 
+    fun setLoopEnabled(enabled: Boolean) {
+        _loopEnabled.value = enabled
+        remixPlaybackEngine.setLoopEnabled(enabled)
+    }
+
+    /** Startet die Mix-Vorschau von vorne, unabhängig vom aktuellen Wiedergabestatus. */
+    fun restart() {
+        val o = original ?: return
+        val v = userVocal ?: return
+        audioFocus.requestFocus(
+            onLoss = { remixPlaybackEngine.pause() },
+            onGain = { remixPlaybackEngine.resume() }
+        )
+        remixPlaybackEngine.start(o, v, _gains.value)
+    }
+
     fun setGains(newGains: MixGains) {
         _gains.value = newGains
         remixPlaybackEngine.setGains(newGains)
@@ -113,12 +135,15 @@ class RemixViewModel(
     fun export(out: OutputStream) {
         val o = original ?: return
         val v = userVocal ?: return
+        VocaltrainerLogger.i("RemixViewModel", "Export gestartet für $projectId, gains=${_gains.value}")
         _isExporting.value = true
         viewModelScope.launch {
             try {
                 WavExporter.export(o, v, _gains.value, out)
+                VocaltrainerLogger.i("RemixViewModel", "Export erfolgreich für $projectId")
                 _events.emit(RemixEvent.ExportSuccess)
             } catch (e: Exception) {
+                VocaltrainerLogger.e("RemixViewModel", "Export fehlgeschlagen für $projectId", e)
                 _events.emit(RemixEvent.ExportError(e.message ?: "Export fehlgeschlagen"))
             } finally {
                 _isExporting.value = false

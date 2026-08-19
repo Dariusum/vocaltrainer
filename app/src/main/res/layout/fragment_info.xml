@@ -18,8 +18,45 @@
             android:gravity="center"
             android:textSize="12sp"
             android:textColor="?android:attr/textColorSecondary"
+            tools:text="GitHub-Version: 0.1.0" />
+
+        <TextView
+            android:id="@+id/tvViewReleases"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
-            tools:text="Vocaltrainer – Version 0.1.0" />
+            android:gravity="center"
+            android:textSize="12sp"
+            android:textColor="@color/colorPrimary"
+            android:textStyle="bold"
+            android:text="@string/action_view_releases" />
+
+        <!-- ═══ DIAGNOSE ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="2dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/settings_diagnostics_title" android:textSize="18sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/settings_diagnostics_desc" android:textSize="13sp" android:textColor="?android:attr/textColorSecondary" android:layout_marginBottom="12dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnViewLog"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:layout_marginEnd="4dp" android:text="@string/action_view_log" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnShareLog"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:layout_marginHorizontal="4dp" android:text="@string/action_share_log" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnClearLog"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                        android:layout_marginStart="4dp" android:text="@string/action_clear_log" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- ═══ ÜBERBLICK ═══ -->
         <com.google.android.material.card.MaterialCardView
