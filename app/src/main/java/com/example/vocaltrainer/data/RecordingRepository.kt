@@ -3,13 +3,16 @@ package com.example.vocaltrainer.data
 import android.content.Context
 import com.example.vocaltrainer.audio.MixGains
 import com.example.vocaltrainer.audio.PcmAudio
+import com.example.vocaltrainer.audio.VocalReducer
 import com.example.vocaltrainer.audio.wav.WavFileReader
 import com.example.vocaltrainer.audio.wav.WavFileWriter
+import com.example.vocaltrainer.log.VocaltrainerLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Properties
 import java.util.UUID
+import kotlin.math.abs
 
 /**
  * Dateisystem-basierte Verwaltung gespeicherter Aufnahme-Projekte — bewusst kein Room
@@ -49,6 +52,7 @@ class RecordingRepository(private val context: Context) {
                 tempVocalFile.copyTo(vocalFile, overwrite = true)
                 tempVocalFile.delete()
             }
+            normalizeVocalPeak(vocalFile)
 
             val project = RecordingProject(
                 id = id,
@@ -89,6 +93,42 @@ class RecordingRepository(private val context: Context) {
         Unit
     }
 
+    /**
+     * Hebt den Pegel der aufgenommenen Stimme einmalig auf einen sinnvollen Ziel-Peak an,
+     * falls sie leise war. [VocalRecorder] nimmt das Mikrofon roh auf, ohne jede
+     * automatische Verstärkung — leise Sänger:innen oder ein leiser Mikrofonpegel führten
+     * sonst zu einer Aufnahme, die selbst mit dem "Deine Stimme"-Regler auf 100 % (kein
+     * Boost möglich, nur Abschwächung) kaum hörbar war. Verstärkung wird gedeckelt, damit
+     * eine nahezu stille Aufnahme (z.B. versehentlich ohne Gesang) nicht zu lautem Rauschen
+     * hochskaliert wird.
+     */
+    private fun normalizeVocalPeak(file: File) {
+        val pcm = WavFileReader.read(file)
+        if (pcm.samples.isEmpty()) return
+
+        var peak = 0
+        for (s in pcm.samples) {
+            val a = abs(s.toInt())
+            if (a > peak) peak = a
+        }
+        if (peak == 0) return
+
+        val scale = (TARGET_PEAK.toFloat() / peak).coerceAtMost(MAX_BOOST)
+        if (scale <= 1.05f) return
+
+        for (i in pcm.samples.indices) {
+            pcm.samples[i] = VocalReducer.clampToShort(pcm.samples[i] * scale)
+        }
+
+        val writer = WavFileWriter(file, pcm.sampleRate, pcm.channelCount)
+        writer.writeFrames(pcm.samples, 0, pcm.samples.size)
+        writer.close()
+        VocaltrainerLogger.i(
+            "RecordingRepository",
+            "Aufnahme normalisiert: Peak vorher=$peak, Faktor=$scale"
+        )
+    }
+
     private fun loadMetadata(dir: File): RecordingProject? {
         if (!dir.isDirectory) return null
         val metaFile = File(dir, METADATA_FILE)
@@ -125,5 +165,7 @@ class RecordingRepository(private val context: Context) {
         private const val ORIGINAL_FILE = "original.wav"
         private const val VOCAL_FILE = "vocal.wav"
         private const val METADATA_FILE = "metadata.properties"
+        private const val TARGET_PEAK = 27000
+        private const val MAX_BOOST = 6f
     }
 }

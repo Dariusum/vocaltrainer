@@ -41,7 +41,7 @@
 
     <!-- 3-Regler-Mix -->
     <string name="fader_master">Gesamtlautstärke</string>
-    <string name="fader_user_vocal">Deine Stimme</string>
+    <string name="fader_user_vocal">Deine Stimme (bis 200 % verstärkbar)</string>
     <string name="fader_original_vocal">Original-Gesang</string>
     <string name="action_export">Exportieren</string>
     <string name="export_in_progress">Export läuft…</string>
