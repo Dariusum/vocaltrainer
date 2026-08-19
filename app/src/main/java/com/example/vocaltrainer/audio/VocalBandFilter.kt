@@ -14,6 +14,10 @@ package com.example.vocaltrainer.audio
  * anschließende Auslöschung wieder korrekt funktioniert. Da der komplette Track
  * ohnehin schon vollständig im Speicher liegt, ist eine Vorberechnung (statt eines
  * Live-Filters während der Wiedergabe) hier möglich und nötig.
+ *
+ * Arbeitet mit einem einzigen, in-place wiederverwendeten FloatArray (statt
+ * mehrerer separater Double-Arrays), um Speicherbandbreite und Allokationen für
+ * lange Tracks (mehrere Millionen Frames) gering zu halten.
  */
 object VocalBandFilter {
 
@@ -22,34 +26,34 @@ object VocalBandFilter {
 
     fun computeVocalBandMid(pcm: PcmAudio, lowHz: Float, highHz: Float): FloatArray {
         val frameCount = pcm.frameCount
-        val mid = DoubleArray(frameCount)
+        val buffer = FloatArray(frameCount)
+
         if (pcm.channelCount == 2) {
             for (i in 0 until frameCount) {
-                val l = pcm.samples[i * 2].toInt()
-                val r = pcm.samples[i * 2 + 1].toInt()
-                mid[i] = (l + r) / 2.0
+                val l = pcm.samples[i * 2]
+                val r = pcm.samples[i * 2 + 1]
+                buffer[i] = (l + r) / 2f
             }
         } else {
             for (i in 0 until frameCount) {
-                mid[i] = pcm.samples[i].toDouble()
+                buffer[i] = pcm.samples[i].toFloat()
             }
         }
 
-        // Vorwärtsdurchlauf
+        // Vorwärtsdurchlauf, in-place.
         var highPass = Biquad.highPass(pcm.sampleRate, lowHz.toDouble())
         var lowPass = Biquad.lowPass(pcm.sampleRate, highHz.toDouble())
-        val forward = DoubleArray(frameCount)
         for (i in 0 until frameCount) {
-            forward[i] = lowPass.process(highPass.process(mid[i]))
+            buffer[i] = lowPass.process(highPass.process(buffer[i].toDouble())).toFloat()
         }
 
-        // Rückwärtsdurchlauf mit frischem Filterzustand hebt die Phasenverschiebung auf.
+        // Rückwärtsdurchlauf mit frischem Filterzustand hebt die Phasenverschiebung auf, in-place.
         highPass = Biquad.highPass(pcm.sampleRate, lowHz.toDouble())
         lowPass = Biquad.lowPass(pcm.sampleRate, highHz.toDouble())
-        val result = FloatArray(frameCount)
         for (i in frameCount - 1 downTo 0) {
-            result[i] = lowPass.process(highPass.process(forward[i])).toFloat()
+            buffer[i] = lowPass.process(highPass.process(buffer[i].toDouble())).toFloat()
         }
-        return result
+
+        return buffer
     }
 }

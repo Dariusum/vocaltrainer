@@ -106,8 +106,19 @@ class PlayerViewModel(
         _trackState.value = TrackUiState.Loading
         viewModelScope.launch {
             try {
+                val t0 = System.currentTimeMillis()
                 val pcm = TrackDecoder.decode(getApplication(), uri)
-                val peaks = WaveformPeaks.compute(pcm)
+                val t1 = System.currentTimeMillis()
+                VocaltrainerLogger.i(
+                    "PlayerViewModel",
+                    "Dekodiert in ${t1 - t0}ms: ${pcm.sampleRate}Hz, ${pcm.channelCount}ch, " +
+                        "${pcm.frameCount} Frames, ${pcm.durationMs}ms Dauer"
+                )
+
+                val peaks = withContext(Dispatchers.Default) { WaveformPeaks.compute(pcm) }
+                val t2 = System.currentTimeMillis()
+                VocaltrainerLogger.i("PlayerViewModel", "Wellenform berechnet in ${t2 - t1}ms")
+
                 val fileName = queryFileName(uri) ?: "Track"
                 val vocalBandMid = if (pcm.channelCount == 2) {
                     withContext(Dispatchers.Default) {
@@ -116,10 +127,9 @@ class PlayerViewModel(
                 } else {
                     null
                 }
-                VocaltrainerLogger.i(
-                    "PlayerViewModel",
-                    "Dekodiert: $fileName, ${pcm.sampleRate}Hz, ${pcm.channelCount}ch, ${pcm.durationMs}ms"
-                )
+                val t3 = System.currentTimeMillis()
+                VocaltrainerLogger.i("PlayerViewModel", "Gesangsband berechnet in ${t3 - t2}ms (gesamt ${t3 - t0}ms)")
+
                 _trackState.value = TrackUiState.Loaded(pcm, peaks, fileName, vocalBandMid)
                 _vocalReduction.value = 0f
             } catch (e: Exception) {
@@ -147,6 +157,9 @@ class PlayerViewModel(
     }
 
     fun setVocalReduction(value: Float) {
+        val state = _trackState.value
+        val hasBand = state is TrackUiState.Loaded && state.vocalBandMid != null
+        VocaltrainerLogger.d("PlayerViewModel", "setVocalReduction($value), vocalBandMid vorhanden=$hasBand")
         _vocalReduction.value = value
         livePlaybackEngine.setVocalReduction(value)
     }

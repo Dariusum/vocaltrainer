@@ -135,6 +135,14 @@ class PlayerFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isRecalculatingBand.collect { recalculating -> updateBandRangeLabel(recalculating) }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.vocalReduction.collect { value ->
+                val target = value * 100f
+                if (binding.sliderVocalReduction.value != target) {
+                    binding.sliderVocalReduction.value = target
+                }
+            }
+        }
     }
 
     private fun updateBandRangeLabel(recalculating: Boolean = viewModel.isRecalculatingBand.value) {
@@ -176,7 +184,6 @@ class PlayerFragment : Fragment() {
                 binding.btnRecord.isEnabled = true
                 val isStereo = state.pcm.channelCount == 2
                 binding.sliderVocalReduction.isEnabled = isStereo
-                binding.sliderVocalReduction.value = 0f
                 binding.tvMonoWarning.visibility = if (isStereo) View.GONE else View.VISIBLE
             }
             is TrackUiState.Error -> {
