@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#26A69A</color>
+    <color name="colorPrimaryDark">#00695C</color>
+    <color name="colorAccent">#80CBC4</color>
+    <color name="background">#121212</color>
+    <color name="cardBackground">#1E1E1E</color>
+    <color name="hintText">#757575</color>
+    <color name="waveform">#4DB6AC</color>
+    <color name="waveformProgress">#80CBC4</color>
+</resources>

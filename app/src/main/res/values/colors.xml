@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#00695C</color>
+    <color name="colorPrimaryDark">#004D40</color>
+    <color name="colorAccent">#26A69A</color>
+    <color name="colorSuccess">#2E7D32</color>
+    <color name="colorWarning">#EF6C00</color>
+    <color name="colorError">#C62828</color>
+    <color name="colorRecording">#C62828</color>
+    <color name="background">#F5F5F5</color>
+    <color name="cardBackground">#FFFFFF</color>
+    <color name="hintText">#9E9E9E</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="waveform">#26A69A</color>
+    <color name="waveformProgress">#00695C</color>
+</resources>

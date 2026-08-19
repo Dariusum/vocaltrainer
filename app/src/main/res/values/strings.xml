@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vocaltrainer</string>
+
+    <string name="nav_player">Wiedergabe</string>
+    <string name="nav_recordings">Aufnahmen</string>
+    <string name="nav_help">Hilfe</string>
+
+    <!-- Wiedergabe -->
+    <string name="action_pick_file">Datei wählen</string>
+    <string name="player_no_track">Keine Datei ausgewählt</string>
+    <string name="action_play">Abspielen</string>
+    <string name="action_pause">Pause</string>
+    <string name="label_vocal_reduction">Gesangsreduzierung</string>
+    <string name="mono_warning">Diese Datei ist Mono — die Gesangsreduzierung wirkt nur bei Stereo-Aufnahmen mit mittig platziertem Gesang.</string>
+    <string name="action_record">Aufnehmen</string>
+    <string name="action_stop_recording">Stopp</string>
+    <string name="recording_in_progress">Aufnahme läuft…</string>
+    <string name="record_permission_denied">Ohne Mikrofonzugriff kann nicht aufgenommen werden</string>
+    <string name="decode_in_progress">Datei wird geladen…</string>
+    <string name="decode_error">Datei konnte nicht geladen werden</string>
+
+    <!-- Speichern-Dialog -->
+    <string name="save_recording_title">Aufnahme speichern</string>
+    <string name="save_recording_hint">Titel</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_discard">Verwerfen</string>
+    <string name="dialog_cancel">Abbrechen</string>
+    <string name="dialog_ok">OK</string>
+    <string name="action_delete">Löschen</string>
+
+    <!-- Aufnahmen-Liste -->
+    <string name="recordings_empty">Noch keine Aufnahmen — wechsle zu Wiedergabe, um eine neue Aufnahme zu erstellen.</string>
+    <string name="confirm_delete_recording_title">Aufnahme löschen?</string>
+    <string name="confirm_delete_recording_message">„%s“ wird unwiderruflich gelöscht.</string>
+
+    <!-- 3-Regler-Mix -->
+    <string name="fader_master">Gesamtlautstärke</string>
+    <string name="fader_user_vocal">Deine Stimme</string>
+    <string name="fader_original_vocal">Original-Gesang</string>
+    <string name="action_export">Exportieren</string>
+    <string name="export_in_progress">Export läuft…</string>
+    <string name="export_success">Export abgeschlossen</string>
+    <string name="export_error">Export fehlgeschlagen</string>
+
+    <!-- Hilfe -->
+    <string name="settings_version">Version %s</string>
+</resources>

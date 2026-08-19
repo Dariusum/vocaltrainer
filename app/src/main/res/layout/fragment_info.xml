@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="12sp"
+            android:textColor="?android:attr/textColorSecondary"
+            android:layout_marginBottom="12dp"
+            tools:text="Vocaltrainer – Version 0.1.0" />
+
+        <!-- ═══ ÜBERBLICK ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="@color/colorPrimary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎤 Was ist Vocaltrainer?" android:textSize="22sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="15sp" android:lineSpacingMultiplier="1.5"
+                        android:text="Vocaltrainer spielt eigene Musikdateien ab, reduziert dabei den Gesang per Regler, nimmt über das Mikrofon dein Mitsingen auf und lässt dich das Ergebnis danach mit drei unabhängigen Reglern neu abmischen und als Datei exportieren." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ═══ DATEI ABSPIELEN ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="#2196F3" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎵 Datei abspielen" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5"
+                        android:text="Tippe im Wiedergabe-Tab auf »Datei wählen« und wähle einen Song aus deinem Gerät. Die Datei wird geladen (das kann bei langen Tracks einen Moment dauern), danach kannst du sie über »Abspielen« anhören." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ═══ GESANGSREDUZIERUNG (Pflicht-Erklärung) ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp" app:strokeColor="#EF6C00" app:strokeWidth="2dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="#EF6C00" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔉 Gesangsreduzierung — wie funktioniert das wirklich?" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:layout_marginBottom="10dp"
+                        android:text="Vocaltrainer verwendet die klassische »Mitte-Kanal-Auslöschung«: Was in der Stereo-Aufnahme mittig zwischen linkem und rechtem Kanal liegt (meist der Gesang), wird beim Hochziehen des Reglers herausgerechnet." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:textStyle="bold" android:layout_marginBottom="6dp"
+                        android:text="Das ist eine Annäherung, keine echte KI-Stimmentrennung:" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Funktioniert nur bei echten Stereo-Aufnahmen mit mittig abgemischtem Gesang." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Funktioniert NICHT bei Mono-Dateien — der Regler ist dann deaktiviert." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4"
+                        android:text="• Reduziert oft auch andere mittig abgemischte Instrumente mit (z. B. Bass, Kick) — keine reine Gesangs-Entfernung." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ═══ AUFNEHMEN ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="#C62828" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎙️ Aufnehmen" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5"
+                        android:text="Tippe auf »Aufnehmen«, um mitzusingen — die App fragt beim ersten Mal nach dem Mikrofon-Zugriff. Der Track startet dabei von vorne und läuft parallel zur Aufnahme. Die Gesangsreduzierung bleibt während der Aufnahme bedienbar (sie betrifft nur, was du hörst, nicht was aufgenommen oder gespeichert wird). Die Aufnahme stoppt automatisch am Ende des Tracks, oder du stoppst manuell. Danach kannst du ihr einen Titel geben und speichern — oder verwerfen. Wichtig: Die App muss während der Aufnahme im Vordergrund bleiben, ein Wechsel zu einer anderen App beendet die Aufnahme." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ═══ 3-REGLER-MIX & EXPORT ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="@color/colorPrimary" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎚️ Der 3-Regler-Mix &amp; Export" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:layout_marginBottom="8dp"
+                        android:text="Nach dem Speichern einer Aufnahme landest du direkt auf dem Mix-Bildschirm mit drei unabhängigen Reglern:" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Gesamtlautstärke — regelt alles zusammen." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Deine Stimme — deine aufgenommene Mitsing-Spur." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="10dp"
+                        android:text="• Original-Gesang — der Gesang im Original-Track (dieselbe Mitte-Kanal-Auslöschung wie beim Vorhören, jetzt aber über den vollen Bereich 0–100 % nutzbar)." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5"
+                        android:text="»Exportieren« erzeugt aus den aktuellen Reglerstellungen eine einzelne WAV-Datei am von dir gewählten Speicherort. Alle gespeicherten Aufnahmen findest du jederzeit wieder im Tab »Aufnahmen«." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- ═══ BEKANNTE EINSCHRÄNKUNGEN ═══ -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="24dp"
+            app:cardCornerRadius="12dp" app:cardElevation="3dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+                <View android:layout_width="match_parent" android:layout_height="6dp" android:background="#757575" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚠️ Bekannte Einschränkungen" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Mono-Dateien werden für die Gesangsreduzierung nicht unterstützt." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Zwischen Original und Aufnahme kann ein leichter Zeitversatz durch System-Audio-Latenz entstehen." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4"
+                        android:text="• Export erzeugt aktuell nur unkomprimierte WAV-Dateien (kein MP3/AAC)." />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>

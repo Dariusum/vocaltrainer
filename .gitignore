@@ -1,0 +1,19 @@
+# Android build outputs
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.aab
+*.ap_
+
+# App build outputs
+app/build/
+
+# Keystore (never commit secrets!)
+*.jks
+*.keystore
