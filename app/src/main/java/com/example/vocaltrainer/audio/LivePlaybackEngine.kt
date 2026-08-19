@@ -3,10 +3,12 @@ package com.example.vocaltrainer.audio
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import com.example.vocaltrainer.log.VocaltrainerLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
 enum class PlaybackState { STOPPED, PLAYING, PAUSED }
 
@@ -109,6 +111,8 @@ class LivePlaybackEngine {
         val framesPerChunk = (bufferSizeBytes / 2 / channelCount).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * channelCount)
         var frame = startFrame
+        var framesSinceLastLog = 0
+        val logIntervalFrames = pcm.sampleRate // ~einmal pro Sekunde Wiedergabe
 
         while (!stopRequested.get()) {
             if (frame >= pcm.frameCount) {
@@ -126,12 +130,33 @@ class LivePlaybackEngine {
             }
             val framesThisChunk = minOf(framesPerChunk, pcm.frameCount - frame)
             val k = vocalReduction
+            val cancellationApplied = channelCount == 2 && k > 0f && vocalBandMid != null
 
-            if (channelCount == 2 && k > 0f && vocalBandMid != null) {
-                VocalReducer.applyCancellation(pcm.samples, vocalBandMid, scratch, frame, framesThisChunk, k)
+            if (cancellationApplied) {
+                VocalReducer.applyCancellation(pcm.samples, vocalBandMid!!, scratch, frame, framesThisChunk, k)
             } else {
                 System.arraycopy(pcm.samples, frame * channelCount, scratch, 0, framesThisChunk * channelCount)
             }
+
+            // Diagnose: einmal pro Sekunde tatsächlich messen, wie stark sich das Signal
+            // durch die Auslöschung verändert hat — beweist, ob k wirklich am Sample
+            // ankommt (statt nur zu vermuten, dass die Regler-Verkabelung stimmt).
+            framesSinceLastLog += framesThisChunk
+            if (framesSinceLastLog >= logIntervalFrames) {
+                framesSinceLastLog = 0
+                var maxDiff = 0
+                val srcOffset = frame * channelCount
+                for (i in 0 until framesThisChunk * channelCount) {
+                    val diff = abs(scratch[i] - pcm.samples[srcOffset + i])
+                    if (diff > maxDiff) maxDiff = diff
+                }
+                VocaltrainerLogger.d(
+                    "LivePlaybackEngine",
+                    "Frame $frame: k=$k, cancellationApplied=$cancellationApplied, " +
+                        "vocalBandMid vorhanden=${vocalBandMid != null}, maxDiff=$maxDiff"
+                )
+            }
+
             track.write(scratch, 0, framesThisChunk * channelCount)
             frame += framesThisChunk
             _positionFrames.value = frame

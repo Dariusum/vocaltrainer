@@ -13,8 +13,6 @@ import java.nio.ByteOrder
 /** Dekodiert eine beliebige lokale Audiodatei (MP3, AAC, OGG, WAV, ...) zu rohem PCM. */
 object TrackDecoder {
 
-    private const val TIMEOUT_US = 10_000L
-
     suspend fun decode(context: Context, uri: Uri): PcmAudio = withContext(Dispatchers.Default) {
         val extractor = MediaExtractor()
         extractor.setDataSource(context, uri, null)
@@ -60,10 +58,19 @@ object TrackDecoder {
         var inputDone = false
         var outputDone = false
 
+        // Beide dequeue-Aufrufe non-blocking (Timeout 0) pollen, statt bei jeder Iteration
+        // bis zu TIMEOUT_US zu warten. Bei TIMEOUT_US=10ms und tausenden Iterationen für
+        // einen mehrminütigen Track summierten sich diese Wartezeiten zuvor auf über eine
+        // Minute Dekodierzeit, obwohl der Codec selbst in Millisekunden fertig wäre. Nur
+        // wenn wirklich weder Input noch Output sofort verfügbar sind, kurz schlafen, um
+        // die CPU nicht mit einem Busy-Loop zu belasten.
         while (!outputDone) {
+            var madeProgress = false
+
             if (!inputDone) {
-                val inputIndex = codec.dequeueInputBuffer(TIMEOUT_US)
+                val inputIndex = codec.dequeueInputBuffer(0)
                 if (inputIndex >= 0) {
+                    madeProgress = true
                     val inputBuffer = codec.getInputBuffer(inputIndex)!!
                     val sampleSize = extractor.readSampleData(inputBuffer, 0)
                     if (sampleSize < 0) {
@@ -76,8 +83,9 @@ object TrackDecoder {
                 }
             }
 
-            var outputIndex = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
+            var outputIndex = codec.dequeueOutputBuffer(bufferInfo, 0)
             while (outputIndex >= 0) {
+                madeProgress = true
                 if (bufferInfo.size > 0) {
                     val outputBuffer = codec.getOutputBuffer(outputIndex)!!
                     outputBuffer.position(bufferInfo.offset)
@@ -89,7 +97,11 @@ object TrackDecoder {
                     outputDone = true
                     break
                 }
-                outputIndex = codec.dequeueOutputBuffer(bufferInfo, TIMEOUT_US)
+                outputIndex = codec.dequeueOutputBuffer(bufferInfo, 0)
+            }
+
+            if (!madeProgress) {
+                Thread.sleep(1)
             }
         }
     }

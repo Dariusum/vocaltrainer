@@ -1,5 +1,8 @@
 package com.example.vocaltrainer.audio
 
+import com.example.vocaltrainer.log.VocaltrainerLogger
+import kotlin.math.sqrt
+
 /**
  * Berechnet einmalig eine auf den Gesangs-Frequenzbereich begrenzte Version des
  * Mittensignals (L+R)/2 für eine komplette Spur.
@@ -40,6 +43,8 @@ object VocalBandFilter {
             }
         }
 
+        val rawMidRms = rms(buffer)
+
         // Vorwärtsdurchlauf, in-place.
         var highPass = Biquad.highPass(pcm.sampleRate, lowHz.toDouble())
         var lowPass = Biquad.lowPass(pcm.sampleRate, highHz.toDouble())
@@ -54,6 +59,23 @@ object VocalBandFilter {
             buffer[i] = lowPass.process(highPass.process(buffer[i].toDouble())).toFloat()
         }
 
+        val bandRms = rms(buffer)
+        // Diagnose: Wenn bandRms nahe 0 ist, liefert der Filter praktisch Stille (Rechenfehler).
+        // Ist bandRms vergleichbar mit rawMidRms, arbeitet der Filter korrekt und die
+        // Auslöschung müsste bei der Wiedergabe hörbar greifen — dann liegt ein etwaiges
+        // Problem an anderer Stelle (z.B. Anwendung während der Wiedergabe).
+        VocaltrainerLogger.i(
+            "VocalBandFilter",
+            "Band $lowHz-${highHz}Hz: RMS Mitte(roh)=$rawMidRms, RMS Gesangsband(gefiltert)=$bandRms"
+        )
+
         return buffer
+    }
+
+    private fun rms(values: FloatArray): Double {
+        if (values.isEmpty()) return 0.0
+        var sumSquares = 0.0
+        for (v in values) sumSquares += v.toDouble() * v.toDouble()
+        return sqrt(sumSquares / values.size)
     }
 }
