@@ -24,8 +24,15 @@ import kotlin.math.sqrt
  */
 object VocalBandFilter {
 
-    const val DEFAULT_LOW_HZ = 200f
-    const val DEFAULT_HIGH_HZ = 4000f
+    // Bewusst nahe an den Slider-Extremen (siehe rangeSliderBand: 50-8000Hz): Diagnose-Logs
+    // zeigten, dass ein schmales Band (z.B. 200-4000Hz) nur einen kleinen Bruchteil der
+    // Energie des Mittensignals erfasst (RMS des gefilterten Bands oft nur ~10-20% des
+    // rohen Mittensignals) — die Auslöschung war dadurch mathematisch korrekt, aber
+    // viel zu schwach, um hörbar zu sein. Ein breites Standardband liefert die stärkste
+    // Auslöschung (nahe dem ursprünglichen Vollband-Ansatz); wer mehr Instrumente erhalten
+    // will, kann das Band über den Regler gezielt einengen.
+    const val DEFAULT_LOW_HZ = 50f
+    const val DEFAULT_HIGH_HZ = 8000f
 
     fun computeVocalBandMid(pcm: PcmAudio, lowHz: Float, highHz: Float): FloatArray {
         val frameCount = pcm.frameCount

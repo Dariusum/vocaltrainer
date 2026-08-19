@@ -17,7 +17,12 @@ class VocalBandSettings(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "vocal_band_settings"
-        private const val KEY_LOW_HZ = "low_hz"
-        private const val KEY_HIGH_HZ = "high_hz"
+        // _v2: Der Standard-Frequenzbereich wurde deutlich verbreitert (siehe
+        // VocalBandFilter.DEFAULT_LOW_HZ/HIGH_HZ), weil ein schmales Band kaum hörbare
+        // Auslöschung brachte. Neue Key-Namen sorgen dafür, dass zuvor gespeicherte,
+        // zu enge Werte aus alten Versionen verworfen werden statt den neuen breiten
+        // Standard zu überschreiben.
+        private const val KEY_LOW_HZ = "low_hz_v2"
+        private const val KEY_HIGH_HZ = "high_hz_v2"
     }
 }
