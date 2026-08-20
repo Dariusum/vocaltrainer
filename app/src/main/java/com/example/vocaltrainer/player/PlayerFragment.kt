@@ -12,7 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import com.example.vocaltrainer.R
 import com.example.vocaltrainer.VocaltrainerApp
@@ -30,7 +30,14 @@ class PlayerFragment : Fragment() {
 
     private val vocaltrainerApp by lazy { requireActivity().application as VocaltrainerApp }
 
-    private val viewModel: PlayerViewModel by viewModels {
+    // Activity-weit statt Fragment-weit gescoped: MainActivity erzeugt bei jedem
+    // Tab-Wechsel (auch erneutem Tippen auf "Wiedergabe" selbst) eine komplett neue
+    // PlayerFragment-Instanz über replace(). Mit einem Fragment-gescopeten ViewModel
+    // würde das den laufenden Ladevorgang/die KI-Trennung (die inzwischen 40-60s dauert)
+    // beim Tab-Wechsel abbrechen — beobachtet als JobCancellationException mitten in der
+    // Trennung. Activity-Scope lässt das ViewModel (und die Wiedergabe) Tab-Wechsel
+    // überleben, passend zur ohnehin geplanten Hintergrund-Wiedergabe.
+    private val viewModel: PlayerViewModel by activityViewModels {
         PlayerViewModel.Factory(requireActivity().application, vocaltrainerApp.recordingRepository)
     }
 

@@ -10,6 +10,7 @@ import com.example.vocaltrainer.recordings.RecordingsListFragment
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var currentTabId: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -17,21 +18,29 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         if (savedInstanceState == null) {
-            showFragment(PlayerFragment())
+            showFragment(R.id.navPlayer, PlayerFragment())
             binding.bottomNav.selectedItemId = R.id.navPlayer
         }
 
         binding.bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navPlayer -> { showFragment(PlayerFragment()); true }
-                R.id.navRecordings -> { showFragment(RecordingsListFragment()); true }
-                R.id.navHelp -> { showFragment(InfoFragment()); true }
+                R.id.navPlayer -> { showFragment(R.id.navPlayer, PlayerFragment()); true }
+                R.id.navRecordings -> { showFragment(R.id.navRecordings, RecordingsListFragment()); true }
+                R.id.navHelp -> { showFragment(R.id.navHelp, InfoFragment()); true }
                 else -> false
             }
         }
     }
 
-    private fun showFragment(fragment: Fragment) {
+    /**
+     * Ignoriert erneutes Tippen auf den bereits aktiven Tab — sonst würde
+     * replace() auch dafür eine neue Fragment-Instanz erzeugen und die alte
+     * unnötig zerstören (bei der Wiedergabe-Fragment sonst harmlos, da das
+     * ViewModel jetzt Activity-weit gescoped ist, aber unnötiger UI-Reset).
+     */
+    private fun showFragment(tabId: Int, fragment: Fragment) {
+        if (tabId == currentTabId) return
+        currentTabId = tabId
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragmentContainer, fragment)
             .commit()
