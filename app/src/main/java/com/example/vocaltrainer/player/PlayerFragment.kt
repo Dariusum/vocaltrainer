@@ -133,6 +133,7 @@ class PlayerFragment : Fragment() {
             is TrackUiState.Idle -> {
                 binding.progressLoading.visibility = View.GONE
                 binding.tvTrackName.text = getString(R.string.player_no_track)
+                binding.btnPickFile.isEnabled = true
                 binding.btnPlayPause.isEnabled = false
                 binding.btnRestart.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
@@ -143,6 +144,7 @@ class PlayerFragment : Fragment() {
             is TrackUiState.Loading -> {
                 binding.progressLoading.visibility = View.VISIBLE
                 binding.tvTrackName.text = getString(R.string.decode_in_progress)
+                binding.btnPickFile.isEnabled = false
                 binding.btnPlayPause.isEnabled = false
                 binding.btnRestart.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
@@ -152,6 +154,7 @@ class PlayerFragment : Fragment() {
                 binding.progressLoading.visibility = View.GONE
                 binding.tvTrackName.text = state.fileName
                 binding.waveformView.setPeaks(state.peaks)
+                binding.btnPickFile.isEnabled = true
                 binding.btnPlayPause.isEnabled = true
                 binding.btnRestart.isEnabled = true
                 binding.btnRecord.isEnabled = true
@@ -162,6 +165,7 @@ class PlayerFragment : Fragment() {
             is TrackUiState.Error -> {
                 binding.progressLoading.visibility = View.GONE
                 binding.tvTrackName.text = getString(R.string.decode_error)
+                binding.btnPickFile.isEnabled = true
                 Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
             }
         }

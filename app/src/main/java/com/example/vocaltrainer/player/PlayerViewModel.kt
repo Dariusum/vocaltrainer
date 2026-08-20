@@ -62,6 +62,7 @@ class PlayerViewModel(
     private val livePlaybackEngine = LivePlaybackEngine()
     private var vocalRecorder: VocalRecorder? = null
     private var recordingObserverJob: Job? = null
+    private var loadJob: Job? = null
     private val audioFocus = AudioFocusCoordinator(application)
 
     private val _trackState = MutableStateFlow<TrackUiState>(TrackUiState.Idle)
@@ -96,9 +97,15 @@ class PlayerViewModel(
 
     fun pickFile(uri: Uri) {
         VocaltrainerLogger.i("PlayerViewModel", "Datei ausgewählt: $uri")
+        // Die KI-Gesangstrennung dauert jetzt teils über eine Minute. Ohne Abbruch des
+        // vorherigen Ladevorgangs liefen bei erneutem Antippen von "Datei wählen" während
+        // des Ladens zwei Trennungen gleichzeitig — das würgt die CPU ab (Chunks wurden
+        // dadurch beobachtet bis zu 6x langsamer) und der zuerst fertige Track wurde durch
+        // den zweiten Durchlauf sofort wieder überschrieben ("Lied verschwindet").
+        loadJob?.cancel()
         livePlaybackEngine.stop()
         _trackState.value = TrackUiState.Loading
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             try {
                 val t0 = System.currentTimeMillis()
                 val pcm = TrackDecoder.decode(getApplication(), uri)

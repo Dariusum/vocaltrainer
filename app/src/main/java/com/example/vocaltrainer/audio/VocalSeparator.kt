@@ -6,6 +6,7 @@ import com.example.vocaltrainer.log.VocaltrainerLogger
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -46,10 +47,14 @@ object VocalSeparator {
 
         val t0 = System.currentTimeMillis()
         val modelFile = ensureModelExtracted(context)
+        // Einen Kern für die UI freilassen: mit allen Kernen für die Inferenz wurde die
+        // App während der ~1 Minute dauernden Trennung spürbar unresponsive (Tippen auf
+        // Buttons schien "nicht zu funktionieren").
+        val inferenceThreads = (Runtime.getRuntime().availableProcessors() - 1).coerceAtLeast(1)
         val model = CompiledModel.create(
             modelFile.absolutePath,
             CompiledModel.Options(Accelerator.CPU).apply {
-                cpuOptions = CompiledModel.CpuOptions(numThreads = Runtime.getRuntime().availableProcessors())
+                cpuOptions = CompiledModel.CpuOptions(numThreads = inferenceThreads)
             }
         )
         val t1 = System.currentTimeMillis()
@@ -77,6 +82,10 @@ object VocalSeparator {
             var chunkIndex = 0
             val totalChunks = (totalFrames + FRAMES_PER_CHUNK - 1) / FRAMES_PER_CHUNK
             while (start < totalFrames) {
+                // Ohne diese Prüfung würde ein abgebrochener Ladevorgang (z.B. weil der
+                // Nutzer während der langen Trennung erneut eine Datei ausgewählt hat)
+                // trotzdem bis zum letzten Chunk weiterrechnen, statt sofort aufzuhören.
+                ensureActive()
                 val count = minOf(FRAMES_PER_CHUNK, totalFrames - start)
                 val chunkT0 = System.currentTimeMillis()
 
