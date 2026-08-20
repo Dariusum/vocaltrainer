@@ -20,25 +20,30 @@ class SeparatedStems(val vocal: PcmAudio, val instrumental: PcmAudio)
  * eines Stereo-Mixes voraus; das Instrumental ergibt sich als Residuum (Original − Gesang) —
  * dadurch ist garantiert, dass Gesang + Instrumental exakt wieder das Original ergeben.
  *
- * Modell: `UVR_MDXNET_9482.fp16acc.tflite`, MIT-lizenziert, siehe
- * `app/src/main/assets/models/LICENSE`. Quelle: huggingface.co/gyoom-sa/UVR-MDX-LiteRT
+ * Modell: `UVR-MDX-NET-Voc_FT.fp16acc.tflite` (höherwertige Variante, 16.7M Parameter —
+ * ersetzt das anfangs gewählte kleinere `UVR_MDXNET_9482`, 7.4M Parameter, dessen
+ * Trennung für manche Tracks nicht kräftig genug war, um hörbar zu sein), MIT-lizenziert,
+ * siehe `app/src/main/assets/models/LICENSE`. Quelle: huggingface.co/gyoom-sa/UVR-MDX-LiteRT
  * (Format-Konvertierung der etablierten UVR-MDX-Net-Gewichte).
  *
- * STFT-Parameter exakt nach Modell-Spezifikation: n_fft=4096, hop=1024, dim_f=2048,
- * periodisches Hann-Fenster, zentriert mit Reflect-Padding, Tensor-Layout NCHW
- * `[1, 4, dim_f, 256]` mit den Ebenen `[L_re, L_im, R_re, R_im]`. Ein Modell-Durchlauf
- * verarbeitet exakt 256 STFT-Frames (~5,9s bei 44,1kHz); längere Tracks werden in
- * aufeinanderfolgenden 256-Frame-Chunks verarbeitet und per Overlap-Add wieder
- * zusammengesetzt (siehe [Stft] — die Korrektheit dieses chunk-weisen Vorgehens ist über
+ * STFT-Parameter exakt nach Modell-Spezifikation: n_fft=6144, hop=1024, dim_f=3072
+ * (Voc_FT nutzt ein größeres FFT-Fenster als das kleinere 9482-Modell — n_fft/dim_f hier
+ * unbedingt zum jeweils geladenen Modell passend halten, hop bleibt bei allen
+ * UVR-MDX-Varianten 1024), periodisches Hann-Fenster, zentriert mit Reflect-Padding,
+ * Tensor-Layout NCHW `[1, 4, dim_f, 256]` mit den Ebenen `[L_re, L_im, R_re, R_im]`. Ein
+ * Modell-Durchlauf verarbeitet exakt 256 STFT-Frames (~5,9s bei 44,1kHz, unabhängig von
+ * n_fft/dim_f, da nur von hop abhängig); längere Tracks werden in aufeinanderfolgenden
+ * 256-Frame-Chunks verarbeitet und per Overlap-Add wieder zusammengesetzt (siehe [Stft] —
+ * die Korrektheit dieses chunk-weisen Vorgehens ist über
  * `StftTest#chunked-istft-matches-single-pass-istft` lokal verifiziert, da hier keine
  * Möglichkeit besteht, auf einem echten Gerät zu testen).
  */
 object VocalSeparator {
 
-    private const val MODEL_ASSET = "models/UVR_MDXNET_9482.fp16acc.tflite"
-    private const val N_FFT = 4096
+    private const val MODEL_ASSET = "models/UVR-MDX-NET-Voc_FT.fp16acc.tflite"
+    private const val N_FFT = 6144
     private const val HOP = 1024
-    private const val DIM_F = 2048
+    private const val DIM_F = 3072
     private const val FRAMES_PER_CHUNK = 256
     private const val PLANES = 4
 
@@ -148,7 +153,11 @@ object VocalSeparator {
     }
 
     private fun ensureModelExtracted(context: Context): File {
-        val target = File(context.filesDir, "models/UVR_MDXNET_9482.fp16acc.tflite")
+        // Zieldateiname aus MODEL_ASSET abgeleitet statt fest einprogrammiert: sonst würde
+        // bei einem Modellwechsel eine bereits extrahierte alte Modell-Datei unter
+        // demselben Pfad stillschweigend weiterverwendet, statt das neue Modell zu laden.
+        val fileName = MODEL_ASSET.substringAfterLast('/')
+        val target = File(context.filesDir, "models/$fileName")
         if (!target.exists() || target.length() == 0L) {
             target.parentFile?.mkdirs()
             context.assets.open(MODEL_ASSET).use { input ->

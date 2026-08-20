@@ -142,21 +142,32 @@ class LivePlaybackEngine {
 
             // Diagnose: einmal pro Sekunde den Peak des abgetrennten Gesangs-Stems in diesem
             // Ausschnitt loggen — beweist, ob das Modell für den aktuellen Abschnitt
-            // überhaupt nennenswerten Gesang erkannt hat (statt nur zu vermuten).
+            // überhaupt nennenswerten Gesang erkannt hat. Zusätzlich: die tatsächliche
+            // Differenz zwischen dem gemischten Ausgabepuffer (scratch, das was wirklich an
+            // AudioTrack geht) und dem reinen Instrumental an derselben Stelle — das beweist
+            // (statt nur die vocalPeak-Eingabe zu vermuten), ob sich am tatsächlich
+            // ausgegebenen Signal überhaupt etwas ändert. Nötig, weil der Nutzer berichtete,
+            // k=0 und k=1.0 klängen "komplett identisch" trotz belegtem vocalPeak>0 — das
+            // grenzt einen Wiring-Bug in applyReduction/AudioTrack.write von reiner
+            // Modell-Trennungsqualität ab.
             framesSinceLastLog += framesThisChunk
             if (framesSinceLastLog >= logIntervalFrames) {
                 framesSinceLastLog = 0
                 var vocalPeak = 0
+                var outputVsInstrumentalMaxDiff = 0
                 if (useStems) {
                     val srcOffset = frame * channelCount
                     for (i in 0 until framesThisChunk * channelCount) {
                         val a = abs(vocal.samples[srcOffset + i].toInt())
                         if (a > vocalPeak) vocalPeak = a
+                        val diff = abs(scratch[i].toInt() - instrumental.samples[srcOffset + i].toInt())
+                        if (diff > outputVsInstrumentalMaxDiff) outputVsInstrumentalMaxDiff = diff
                     }
                 }
                 VocaltrainerLogger.d(
                     "LivePlaybackEngine",
-                    "Frame $frame: k=$k, useStems=$useStems, vocalPeak=$vocalPeak"
+                    "Frame $frame: k=$k, useStems=$useStems, vocalPeak=$vocalPeak, " +
+                        "outputVsInstrumentalMaxDiff=$outputVsInstrumentalMaxDiff"
                 )
             }
 
