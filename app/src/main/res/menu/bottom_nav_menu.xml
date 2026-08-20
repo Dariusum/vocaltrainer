@@ -9,6 +9,10 @@
         android:icon="@drawable/ic_nav_recordings"
         android:title="@string/nav_recordings" />
     <item
+        android:id="@+id/navPlaylists"
+        android:icon="@drawable/ic_nav_playlists"
+        android:title="@string/nav_playlists" />
+    <item
         android:id="@+id/navHelp"
         android:icon="@drawable/ic_nav_help"
         android:title="@string/nav_help" />

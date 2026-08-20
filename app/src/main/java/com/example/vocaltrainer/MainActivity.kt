@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.example.vocaltrainer.databinding.ActivityMainBinding
 import com.example.vocaltrainer.player.PlayerFragment
+import com.example.vocaltrainer.playlists.PlaylistsFragment
 import com.example.vocaltrainer.recordings.RecordingsListFragment
 
 class MainActivity : AppCompatActivity() {
@@ -26,10 +27,16 @@ class MainActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.navPlayer -> { showFragment(R.id.navPlayer, PlayerFragment()); true }
                 R.id.navRecordings -> { showFragment(R.id.navRecordings, RecordingsListFragment()); true }
+                R.id.navPlaylists -> { showFragment(R.id.navPlaylists, PlaylistsFragment()); true }
                 R.id.navHelp -> { showFragment(R.id.navHelp, InfoFragment()); true }
                 else -> false
             }
         }
+    }
+
+    /** Wechselt zum Wiedergabe-Tab, z.B. nachdem aus einer Playlist ein Titel gestartet wurde. */
+    fun navigateToPlayerTab() {
+        binding.bottomNav.selectedItemId = R.id.navPlayer
     }
 
     /**

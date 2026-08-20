@@ -18,6 +18,24 @@
             android:text="@string/action_pick_file" />
 
         <TextView
+            android:id="@+id/tvRecentTracksLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/label_recent_tracks"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerRecentTracks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:clipToPadding="false"
+            android:visibility="gone"
+            tools:listitem="@layout/item_recent_track" />
+
+        <TextView
             android:id="@+id/tvTrackName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -58,24 +76,43 @@
             android:layout_marginTop="12dp">
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPrevious"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:enabled="false"
+                android:text="@string/action_previous" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayPause"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="2"
+                android:layout_marginStart="8dp"
                 android:enabled="false"
                 android:text="@string/action_play" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRestart"
+                android:id="@+id/btnNext"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:enabled="false"
-                android:text="@string/action_restart" />
+                android:text="@string/action_next" />
 
         </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRestart"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:enabled="false"
+            android:text="@string/action_restart" />
 
         <LinearLayout
             android:layout_width="match_parent"

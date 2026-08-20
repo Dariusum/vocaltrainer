@@ -4,6 +4,7 @@
 
     <string name="nav_player">Wiedergabe</string>
     <string name="nav_recordings">Aufnahmen</string>
+    <string name="nav_playlists">Playlists</string>
     <string name="nav_help">Hilfe</string>
 
     <!-- Wiedergabe -->
@@ -22,6 +23,9 @@
     <string name="decode_error">Datei konnte nicht geladen werden</string>
     <string name="action_restart">Von vorne</string>
     <string name="label_loop">Schleife</string>
+    <string name="action_previous">Zurück</string>
+    <string name="action_next">Weiter</string>
+    <string name="label_recent_tracks">Zuletzt gespielt</string>
 
     <!-- Speichern-Dialog -->
     <string name="save_recording_title">Aufnahme speichern</string>
@@ -36,6 +40,18 @@
     <string name="recordings_empty">Noch keine Aufnahmen — wechsle zu Wiedergabe, um eine neue Aufnahme zu erstellen.</string>
     <string name="confirm_delete_recording_title">Aufnahme löschen?</string>
     <string name="confirm_delete_recording_message">„%s“ wird unwiderruflich gelöscht.</string>
+
+    <!-- Playlists -->
+    <string name="playlists_empty">Noch keine Playlists — tippe auf „+“, um eine neue anzulegen.</string>
+    <string name="action_new_playlist">Neue Playlist</string>
+    <string name="new_playlist_title">Neue Playlist</string>
+    <string name="new_playlist_hint">Name</string>
+    <string name="confirm_delete_playlist_title">Playlist löschen?</string>
+    <string name="confirm_delete_playlist_message">„%s“ wird unwiderruflich gelöscht (die enthaltenen Titel bleiben erhalten).</string>
+    <string name="playlist_detail_empty">Noch keine Titel — tippe auf „+“, um einen hinzuzufügen.</string>
+    <string name="action_add_track">Titel hinzufügen</string>
+    <string name="confirm_remove_track_title">Titel entfernen?</string>
+    <string name="confirm_remove_track_message">„%s“ wird aus dieser Playlist entfernt.</string>
 
     <!-- 3-Regler-Mix -->
     <string name="fader_master">Gesamtlautstärke</string>

@@ -1,6 +1,7 @@
 package com.example.vocaltrainer.player
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -14,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.vocaltrainer.R
 import com.example.vocaltrainer.VocaltrainerApp
 import com.example.vocaltrainer.audio.PlaybackState
@@ -38,11 +40,25 @@ class PlayerFragment : Fragment() {
     // Trennung. Activity-Scope lässt das ViewModel (und die Wiedergabe) Tab-Wechsel
     // überleben, passend zur ohnehin geplanten Hintergrund-Wiedergabe.
     private val viewModel: PlayerViewModel by activityViewModels {
-        PlayerViewModel.Factory(requireActivity().application, vocaltrainerApp.recordingRepository)
+        PlayerViewModel.Factory(
+            requireActivity().application,
+            vocaltrainerApp.recordingRepository,
+            vocaltrainerApp.recentTracksStore
+        )
     }
 
-    private val filePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { viewModel.pickFile(it) }
+    private lateinit var recentTrackAdapter: RecentTrackAdapter
+
+    // OpenDocument statt GetContent: nur OpenDocument-URIs erlauben eine dauerhafte
+    // Berechtigung via takePersistableUriPermission — nötig, damit Playlists und die
+    // Schnellauswahl einen Titel auch nach einem App-Neustart noch öffnen können.
+    private val filePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let {
+            requireContext().contentResolver.takePersistableUriPermission(
+                it, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel.pickFile(it)
+        }
     }
 
     private val recordPermissionLauncher = registerForActivityResult(
@@ -65,9 +81,18 @@ class PlayerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.btnPickFile.setOnClickListener { filePicker.launch("audio/*") }
+        binding.btnPickFile.setOnClickListener { filePicker.launch(arrayOf("audio/*")) }
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
         binding.btnRestart.setOnClickListener { viewModel.restart() }
+        binding.btnPrevious.setOnClickListener { viewModel.playPrevious() }
+        binding.btnNext.setOnClickListener { viewModel.playNext() }
+
+        recentTrackAdapter = RecentTrackAdapter { position ->
+            viewModel.playFromQueue(viewModel.recentTracks.value, position)
+        }
+        binding.recyclerRecentTracks.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        binding.recyclerRecentTracks.adapter = recentTrackAdapter
 
         binding.sliderVocalReduction.addOnChangeListener { _, value, fromUser ->
             if (fromUser) viewModel.setVocalReduction(value / 100f)
@@ -105,6 +130,8 @@ class PlayerFragment : Fragment() {
                 binding.tvRecordingStatus.visibility = if (recording) View.VISIBLE else View.GONE
                 binding.btnPickFile.isEnabled = !recording
                 binding.btnRestart.isEnabled = !recording && viewModel.trackState.value is TrackUiState.Loaded
+                binding.btnPrevious.isEnabled = !recording && viewModel.hasPrevious.value
+                binding.btnNext.isEnabled = !recording && viewModel.hasNext.value
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -112,6 +139,20 @@ class PlayerFragment : Fragment() {
                 binding.tvRecordingStatus.text =
                     "${getString(R.string.recording_in_progress)} ${formatDuration(ms)}"
             }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.recentTracks.collect { tracks ->
+                recentTrackAdapter.submitList(tracks)
+                val visibility = if (tracks.isEmpty()) View.GONE else View.VISIBLE
+                binding.tvRecentTracksLabel.visibility = visibility
+                binding.recyclerRecentTracks.visibility = visibility
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.hasPrevious.collect { has -> binding.btnPrevious.isEnabled = has && !viewModel.isRecording.value }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.hasNext.collect { has -> binding.btnNext.isEnabled = has && !viewModel.isRecording.value }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.events.collect { event -> handleEvent(event) }
@@ -143,6 +184,8 @@ class PlayerFragment : Fragment() {
                 binding.btnPickFile.isEnabled = true
                 binding.btnPlayPause.isEnabled = false
                 binding.btnRestart.isEnabled = false
+                binding.btnPrevious.isEnabled = false
+                binding.btnNext.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
                 binding.btnRecord.isEnabled = false
                 binding.tvMonoWarning.visibility = View.GONE
@@ -154,6 +197,8 @@ class PlayerFragment : Fragment() {
                 binding.btnPickFile.isEnabled = false
                 binding.btnPlayPause.isEnabled = false
                 binding.btnRestart.isEnabled = false
+                binding.btnPrevious.isEnabled = false
+                binding.btnNext.isEnabled = false
                 binding.sliderVocalReduction.isEnabled = false
                 binding.btnRecord.isEnabled = false
             }
@@ -164,6 +209,8 @@ class PlayerFragment : Fragment() {
                 binding.btnPickFile.isEnabled = true
                 binding.btnPlayPause.isEnabled = true
                 binding.btnRestart.isEnabled = true
+                binding.btnPrevious.isEnabled = viewModel.hasPrevious.value
+                binding.btnNext.isEnabled = viewModel.hasNext.value
                 binding.btnRecord.isEnabled = true
                 val isStereo = state.pcm.channelCount == 2
                 binding.sliderVocalReduction.isEnabled = isStereo
