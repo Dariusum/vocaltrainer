@@ -148,4 +148,46 @@ class StftTest {
             assertEquals("win[$i]", singleWin[i], chunkedWin[i], 1e-6f)
         }
     }
+
+    @Test
+    fun `stft then istft reconstructs original signal with Voc_FT parameters (non-power-of-two n_fft)`() {
+        // n_fft=6144 ist keine Zweierpotenz (Bluestein-Pfad in FftPlan) - dieser Test deckt
+        // genau die Konfiguration ab, die den ursprünglichen "Länge muss eine Zweierpotenz
+        // sein"-Absturz mit dem UVR-MDX-NET-Voc_FT-Modell auf einem echten Gerät ausgelöst hat.
+        val nFft = 6144
+        val hop = 1024
+        val dimF = 3072
+        val stft = Stft(nFft, hop, dimF)
+
+        val sampleRate = 44100
+        val durationSeconds = 1.5
+        val length = (sampleRate * durationSeconds).toInt()
+        val original = FloatArray(length) { i ->
+            (0.5 * sin(2.0 * PI * 440.0 * i / sampleRate) + 0.3 * sin(2.0 * PI * 1000.0 * i / sampleRate)).toFloat()
+        }
+
+        val padded = stft.padReflect(original)
+        val frameCount = stft.frameCount(length)
+        val (specRe, specIm) = stft.forward(padded, 0, frameCount)
+
+        val paddedLength = stft.paddedLength(length)
+        val outAccum = FloatArray(paddedLength)
+        val windowSumAccum = FloatArray(paddedLength)
+        stft.accumulateInverse(specRe, specIm, 0, frameCount, outAccum, windowSumAccum)
+
+        val padOffset = stft.padOffset()
+        val reconstructed = FloatArray(length)
+        for (i in 0 until length) {
+            val denom = windowSumAccum[padOffset + i]
+            reconstructed[i] = if (denom > 1e-8f) outAccum[padOffset + i] / denom else 0f
+        }
+
+        val margin = nFft
+        var maxDiff = 0f
+        for (i in margin until length - margin) {
+            val diff = abs(original[i] - reconstructed[i])
+            if (diff > maxDiff) maxDiff = diff
+        }
+        assertTrue("maxDiff in der Mitte war $maxDiff, erwartet < 0.01", maxDiff < 0.01f)
+    }
 }

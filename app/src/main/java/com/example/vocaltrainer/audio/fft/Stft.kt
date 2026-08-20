@@ -17,6 +17,9 @@ class Stft(private val nFft: Int, private val hop: Int, private val dimF: Int) {
 
     private val window: FloatArray = periodicHann(nFft)
     private val padLen = nFft / 2
+    // Manche Modelle (z.B. Voc_FT) verwenden ein nFft, das keine Zweierpotenz ist — FftPlan
+    // wählt automatisch zwischen dem schnellen Zweierpotenz-Pfad und Bluesteins Algorithmus.
+    private val fft = FftPlan(nFft)
 
     /** Reflect-Padding (numpy-`mode='reflect'`-Konvention) an beiden Enden um [nFft]/2. */
     fun padReflect(samples: FloatArray): FloatArray {
@@ -49,7 +52,7 @@ class Stft(private val nFft: Int, private val hop: Int, private val dimF: Int) {
                 frameRe[i] = padded[offset + i] * window[i]
                 frameIm[i] = 0f
             }
-            ComplexFft.forward(frameRe, frameIm)
+            fft.forward(frameRe, frameIm)
             val base = f * dimF
             System.arraycopy(frameRe, 0, outRe, base, dimF)
             System.arraycopy(frameIm, 0, outIm, base, dimF)
@@ -88,7 +91,7 @@ class Stft(private val nFft: Int, private val hop: Int, private val dimF: Int) {
             }
             frameRe[nFft / 2] = 0f
             frameIm[nFft / 2] = 0f
-            ComplexFft.inverse(frameRe, frameIm)
+            fft.inverse(frameRe, frameIm)
             val offset = (startFrame + f) * hop
             for (i in 0 until nFft) {
                 outAccum[offset + i] += frameRe[i] * window[i]
