@@ -13,6 +13,7 @@ import java.io.File
 import java.util.Properties
 import java.util.UUID
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * Dateisystem-basierte Verwaltung gespeicherter Aufnahme-Projekte — bewusst kein Room
@@ -52,7 +53,7 @@ class RecordingRepository(private val context: Context) {
                 tempVocalFile.copyTo(vocalFile, overwrite = true)
                 tempVocalFile.delete()
             }
-            normalizeVocalPeak(vocalFile)
+            normalizeVocalLoudness(vocalFile)
 
             val project = RecordingProject(
                 id = id,
@@ -94,26 +95,38 @@ class RecordingRepository(private val context: Context) {
     }
 
     /**
-     * Hebt den Pegel der aufgenommenen Stimme einmalig auf einen sinnvollen Ziel-Peak an,
+     * Hebt den Pegel der aufgenommenen Stimme einmalig auf eine sinnvolle Ziel-Lautheit an,
      * falls sie leise war. [VocalRecorder] nimmt das Mikrofon roh auf, ohne jede
      * automatische Verstärkung — leise Sänger:innen oder ein leiser Mikrofonpegel führten
      * sonst zu einer Aufnahme, die selbst mit dem "Deine Stimme"-Regler auf 100 % (kein
-     * Boost möglich, nur Abschwächung) kaum hörbar war. Verstärkung wird gedeckelt, damit
-     * eine nahezu stille Aufnahme (z.B. versehentlich ohne Gesang) nicht zu lautem Rauschen
-     * hochskaliert wird.
+     * Boost möglich, nur Abschwächung) kaum hörbar war.
+     *
+     * Bewusst RMS-basiert statt reiner Peak-Normalisierung: ein einzelner lauter Ausreißer
+     * (z.B. ein Pop-Laut oder eine kurze Berührung des Mikrofons) reicht bei Peak-basierter
+     * Normalisierung aus, um den Ziel-Peak zu erreichen — der Rest der eigentlichen
+     * Gesangsaufnahme bleibt dann trotzdem leise. RMS über die stimmhaften Abschnitte bildet
+     * die tatsächlich wahrgenommene Lautstärke deutlich besser ab. Ein einfaches Noise-Gate
+     * blendet nahezu stille Passagen (Atempausen, Raumrauschen) aus der RMS-Berechnung aus,
+     * damit lange Stille den Durchschnitt nicht künstlich nach unten zieht.
      */
-    private fun normalizeVocalPeak(file: File) {
+    private fun normalizeVocalLoudness(file: File) {
         val pcm = WavFileReader.read(file)
         if (pcm.samples.isEmpty()) return
 
-        var peak = 0
+        var sumSquares = 0.0
+        var gatedCount = 0
         for (s in pcm.samples) {
-            val a = abs(s.toInt())
-            if (a > peak) peak = a
+            val value = s.toInt()
+            if (abs(value) >= NOISE_GATE_THRESHOLD) {
+                sumSquares += value.toDouble() * value.toDouble()
+                gatedCount++
+            }
         }
-        if (peak == 0) return
+        if (gatedCount == 0) return // nahezu komplette Stille/Rauschen — nicht hochskalieren
+        val rms = sqrt(sumSquares / gatedCount)
+        if (rms <= 0.0) return
 
-        val scale = (TARGET_PEAK.toFloat() / peak).coerceAtMost(MAX_BOOST)
+        val scale = (TARGET_RMS / rms).toFloat().coerceAtMost(MAX_BOOST)
         if (scale <= 1.05f) return
 
         for (i in pcm.samples.indices) {
@@ -125,7 +138,7 @@ class RecordingRepository(private val context: Context) {
         writer.close()
         VocaltrainerLogger.i(
             "RecordingRepository",
-            "Aufnahme normalisiert: Peak vorher=$peak, Faktor=$scale"
+            "Aufnahme normalisiert: RMS vorher=$rms, Faktor=$scale"
         )
     }
 
@@ -165,7 +178,8 @@ class RecordingRepository(private val context: Context) {
         private const val ORIGINAL_FILE = "original.wav"
         private const val VOCAL_FILE = "vocal.wav"
         private const val METADATA_FILE = "metadata.properties"
-        private const val TARGET_PEAK = 27000
-        private const val MAX_BOOST = 6f
+        private const val NOISE_GATE_THRESHOLD = 400
+        private const val TARGET_RMS = 6500.0
+        private const val MAX_BOOST = 8f
     }
 }
