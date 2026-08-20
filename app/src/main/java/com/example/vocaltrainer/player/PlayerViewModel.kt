@@ -12,16 +12,15 @@ import com.example.vocaltrainer.audio.AudioFocusCoordinator
 import com.example.vocaltrainer.audio.LivePlaybackEngine
 import com.example.vocaltrainer.audio.PcmAudio
 import com.example.vocaltrainer.audio.PlaybackState
+import com.example.vocaltrainer.audio.SeparatedStems
 import com.example.vocaltrainer.audio.TrackDecoder
-import com.example.vocaltrainer.audio.VocalBandFilter
-import com.example.vocaltrainer.audio.VocalBandSettings
 import com.example.vocaltrainer.audio.VocalRecorder
+import com.example.vocaltrainer.audio.VocalSeparator
 import com.example.vocaltrainer.data.RecordingRepository
 import com.example.vocaltrainer.log.VocaltrainerLogger
 import com.example.vocaltrainer.ui.widget.WaveformPeaks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -41,8 +40,11 @@ sealed class TrackUiState {
         val pcm: PcmAudio,
         val peaks: FloatArray,
         val fileName: String,
-        val vocalBandMid: FloatArray?
-    ) : TrackUiState()
+        val stems: SeparatedStems?
+    ) : TrackUiState() {
+        /** Zum Abspielen: das Instrumental, falls getrennt, sonst das unveränderte Original. */
+        val instrumental: PcmAudio get() = stems?.instrumental ?: pcm
+    }
     data class Error(val message: String) : TrackUiState()
 }
 
@@ -60,9 +62,7 @@ class PlayerViewModel(
     private val livePlaybackEngine = LivePlaybackEngine()
     private var vocalRecorder: VocalRecorder? = null
     private var recordingObserverJob: Job? = null
-    private var bandRecomputeJob: Job? = null
     private val audioFocus = AudioFocusCoordinator(application)
-    private val bandSettings = VocalBandSettings(application)
 
     private val _trackState = MutableStateFlow<TrackUiState>(TrackUiState.Idle)
     val trackState: StateFlow<TrackUiState> = _trackState.asStateFlow()
@@ -76,14 +76,8 @@ class PlayerViewModel(
     private val _loopEnabled = MutableStateFlow(false)
     val loopEnabled: StateFlow<Boolean> = _loopEnabled.asStateFlow()
 
-    private val _bandLowHz = MutableStateFlow(bandSettings.lowHz)
-    val bandLowHz: StateFlow<Float> = _bandLowHz.asStateFlow()
-
-    private val _bandHighHz = MutableStateFlow(bandSettings.highHz)
-    val bandHighHz: StateFlow<Float> = _bandHighHz.asStateFlow()
-
-    private val _isRecalculatingBand = MutableStateFlow(false)
-    val isRecalculatingBand: StateFlow<Boolean> = _isRecalculatingBand.asStateFlow()
+    private val _isSeparatingVocals = MutableStateFlow(false)
+    val isSeparatingVocals: StateFlow<Boolean> = _isSeparatingVocals.asStateFlow()
 
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
@@ -120,17 +114,20 @@ class PlayerViewModel(
                 VocaltrainerLogger.i("PlayerViewModel", "Wellenform berechnet in ${t2 - t1}ms")
 
                 val fileName = queryFileName(uri) ?: "Track"
-                val vocalBandMid = if (pcm.channelCount == 2) {
-                    withContext(Dispatchers.Default) {
-                        VocalBandFilter.computeVocalBandMid(pcm, _bandLowHz.value, _bandHighHz.value)
+                val stems = if (pcm.channelCount == 2) {
+                    _isSeparatingVocals.value = true
+                    try {
+                        VocalSeparator.separate(getApplication(), pcm)
+                    } finally {
+                        _isSeparatingVocals.value = false
                     }
                 } else {
                     null
                 }
                 val t3 = System.currentTimeMillis()
-                VocaltrainerLogger.i("PlayerViewModel", "Gesangsband berechnet in ${t3 - t2}ms (gesamt ${t3 - t0}ms)")
+                VocaltrainerLogger.i("PlayerViewModel", "Gesangstrennung fertig in ${t3 - t2}ms (gesamt ${t3 - t0}ms)")
 
-                _trackState.value = TrackUiState.Loaded(pcm, peaks, fileName, vocalBandMid)
+                _trackState.value = TrackUiState.Loaded(pcm, peaks, fileName, stems)
                 _vocalReduction.value = 0f
             } catch (e: Exception) {
                 VocaltrainerLogger.e("PlayerViewModel", "Fehler beim Dekodieren von $uri", e)
@@ -151,15 +148,15 @@ class PlayerViewModel(
                     onGain = { livePlaybackEngine.resume() }
                 )
                 livePlaybackEngine.setVocalReduction(_vocalReduction.value)
-                livePlaybackEngine.start(state.pcm, state.vocalBandMid)
+                livePlaybackEngine.start(state.instrumental, state.stems?.vocal)
             }
         }
     }
 
     fun setVocalReduction(value: Float) {
         val state = _trackState.value
-        val hasBand = state is TrackUiState.Loaded && state.vocalBandMid != null
-        VocaltrainerLogger.d("PlayerViewModel", "setVocalReduction($value), vocalBandMid vorhanden=$hasBand")
+        val hasStems = state is TrackUiState.Loaded && state.stems != null
+        VocaltrainerLogger.d("PlayerViewModel", "setVocalReduction($value), Stems vorhanden=$hasStems")
         _vocalReduction.value = value
         livePlaybackEngine.setVocalReduction(value)
     }
@@ -167,31 +164,6 @@ class PlayerViewModel(
     fun setLoopEnabled(enabled: Boolean) {
         _loopEnabled.value = enabled
         livePlaybackEngine.setLoopEnabled(enabled)
-    }
-
-    /** Bandgrenzen der Gesangsreduzierung ändern — wird persistiert und für den aktuellen Track neu berechnet. */
-    fun setBandRange(lowHz: Float, highHz: Float) {
-        _bandLowHz.value = lowHz
-        _bandHighHz.value = highHz
-        bandSettings.lowHz = lowHz
-        bandSettings.highHz = highHz
-
-        val state = _trackState.value
-        if (state !is TrackUiState.Loaded || state.pcm.channelCount != 2) return
-
-        bandRecomputeJob?.cancel()
-        bandRecomputeJob = viewModelScope.launch {
-            delay(400)
-            _isRecalculatingBand.value = true
-            val newBand = withContext(Dispatchers.Default) {
-                VocalBandFilter.computeVocalBandMid(state.pcm, lowHz, highHz)
-            }
-            val current = _trackState.value
-            if (current is TrackUiState.Loaded && current.pcm === state.pcm) {
-                _trackState.value = current.copy(vocalBandMid = newBand)
-            }
-            _isRecalculatingBand.value = false
-        }
     }
 
     /** Startet den aktuell geladenen Track von vorne, unabhängig vom aktuellen Wiedergabestatus. */
@@ -203,7 +175,7 @@ class PlayerViewModel(
             onGain = { livePlaybackEngine.resume() }
         )
         livePlaybackEngine.setVocalReduction(_vocalReduction.value)
-        livePlaybackEngine.start(state.pcm, state.vocalBandMid)
+        livePlaybackEngine.start(state.instrumental, state.stems?.vocal)
     }
 
     /**
@@ -220,7 +192,7 @@ class PlayerViewModel(
 
         audioFocus.requestFocus(onLoss = { stopRecording() }, onGain = {})
         livePlaybackEngine.setVocalReduction(_vocalReduction.value)
-        livePlaybackEngine.start(state.pcm, state.vocalBandMid, startFrame = 0)
+        livePlaybackEngine.start(state.instrumental, state.stems?.vocal, startFrame = 0)
 
         val recorder = VocalRecorder(state.pcm.sampleRate)
         vocalRecorder = recorder

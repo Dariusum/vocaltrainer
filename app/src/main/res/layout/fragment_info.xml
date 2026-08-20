@@ -93,19 +93,17 @@
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
                 <View android:layout_width="match_parent" android:layout_height="6dp" android:background="#EF6C00" />
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔉 Gesangsreduzierung — wie funktioniert das wirklich?" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔉 Gesangsreduzierung — wie funktioniert das?" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:layout_marginBottom="10dp"
-                        android:text="Vocaltrainer verwendet die klassische »Mitte-Kanal-Auslöschung«: Was in der Stereo-Aufnahme mittig zwischen linkem und rechtem Kanal liegt (meist der Gesang), wird beim Hochziehen des Reglers herausgerechnet — begrenzt auf ein einstellbares Frequenzband (Regler unter der Gesangsreduzierung, Standard 200–4000 Hz), damit möglichst nur der Gesang und nicht das gesamte mittig abgemischte Signal betroffen ist." />
-                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5" android:textStyle="bold" android:layout_marginBottom="6dp"
-                        android:text="Das ist eine Annäherung, keine echte KI-Stimmentrennung:" />
+                        android:text="Vocaltrainer trennt den Gesang mit einem KI-Modell direkt auf dem Gerät vom restlichen Mix — beim Laden eines Tracks läuft dafür einmalig eine Analyse (je nach Tracklänge und Gerät kann das einige zehner Sekunden dauern). Danach lassen sich Instrumental und Original-Gesang unabhängig regeln." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
-                        android:text="• Funktioniert nur bei echten Stereo-Aufnahmen mit mittig abgemischtem Gesang." />
+                        android:text="• Anders als eine reine Mitte-Kanal-Auslöschung erkennt das Modell den Gesang unabhängig von seiner Position im Stereobild." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
                         android:text="• Funktioniert NICHT bei Mono-Dateien — der Regler ist dann deaktiviert." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
-                        android:text="• Reduziert je nach Frequenzband auch andere mittig abgemischte Instrumente mit (z. B. Bass, Kick) — keine reine Gesangs-Entfernung." />
+                        android:text="• Läuft komplett offline auf dem Gerät, es werden keine Daten hochgeladen." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4"
-                        android:text="• Über das Frequenzband lässt sich nachjustieren: schmaler stellen reduziert weniger Instrumente, breiter stellen erfasst mehr vom Gesang." />
+                        android:text="• Wie jedes KI-Modell arbeitet die Trennung nicht perfekt — bei manchen Mixes können leichte Artefakte oder Reste des jeweils anderen Anteils hörbar bleiben." />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -139,7 +137,7 @@
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
                         android:text="• Deine Stimme — deine aufgenommene Mitsing-Spur." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="10dp"
-                        android:text="• Original-Gesang — der Gesang im Original-Track (dieselbe Mitte-Kanal-Auslöschung wie beim Vorhören, jetzt aber über den vollen Bereich 0–100 % nutzbar)." />
+                        android:text="• Original-Gesang — der per KI abgetrennte Gesang aus dem Original-Track." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.5"
                         android:text="»Exportieren« erzeugt aus den aktuellen Reglerstellungen eine einzelne WAV-Datei am von dir gewählten Speicherort. Alle gespeicherten Aufnahmen findest du jederzeit wieder im Tab »Aufnahmen«." />
                 </LinearLayout>
@@ -158,6 +156,8 @@
                         android:text="• Mono-Dateien werden für die Gesangsreduzierung nicht unterstützt." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
                         android:text="• Zwischen Original und Aufnahme kann ein leichter Zeitversatz durch System-Audio-Latenz entstehen." />
+                    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="4dp"
+                        android:text="• Die KI-Gesangstrennung läuft einmalig pro Track auf dem Gerät und kann bei langen Dateien oder älteren Geräten eine Weile dauern." />
                     <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="14sp" android:lineSpacingMultiplier="1.4"
                         android:text="• Export erzeugt aktuell nur unkomprimierte WAV-Dateien (kein MP3/AAC)." />
                 </LinearLayout>

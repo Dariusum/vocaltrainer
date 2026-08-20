@@ -30,8 +30,8 @@ class RemixPlaybackEngine {
     val finished: StateFlow<Boolean> = _finished.asStateFlow()
 
     fun start(
-        original: PcmAudio,
-        vocalBandMid: FloatArray,
+        instrumental: PcmAudio,
+        originalVocalStem: PcmAudio,
         userVocal: PcmAudio,
         initialGains: MixGains,
         startFrame: Int = 0
@@ -43,7 +43,7 @@ class RemixPlaybackEngine {
         pauseRequested.set(false)
 
         val minBufferSize = AudioTrack.getMinBufferSize(
-            original.sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
+            instrumental.sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
         )
         val bufferSize = maxOf(minBufferSize, 8192)
 
@@ -57,7 +57,7 @@ class RemixPlaybackEngine {
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(original.sampleRate)
+                    .setSampleRate(instrumental.sampleRate)
                     .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                     .build()
             )
@@ -68,7 +68,7 @@ class RemixPlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val thread = Thread { playLoop(original, vocalBandMid, userVocal, startFrame, track, bufferSize) }
+        val thread = Thread { playLoop(instrumental, originalVocalStem, userVocal, startFrame, track, bufferSize) }
         thread.name = "RemixPlaybackEngine"
         playThread = thread
         thread.start()
@@ -107,8 +107,8 @@ class RemixPlaybackEngine {
     }
 
     private fun playLoop(
-        original: PcmAudio,
-        vocalBandMid: FloatArray,
+        instrumental: PcmAudio,
+        originalVocalStem: PcmAudio,
         userVocal: PcmAudio,
         startFrame: Int,
         track: AudioTrack,
@@ -118,10 +118,10 @@ class RemixPlaybackEngine {
         val scratch = ShortArray(framesPerChunk * 2)
         var frame = startFrame
         var framesSinceLastLog = 0
-        val logIntervalFrames = original.sampleRate // ~einmal pro Sekunde Wiedergabe
+        val logIntervalFrames = instrumental.sampleRate // ~einmal pro Sekunde Wiedergabe
 
         while (!stopRequested.get()) {
-            if (frame >= original.frameCount) {
+            if (frame >= instrumental.frameCount) {
                 if (loopEnabled) {
                     frame = 0
                     continue
@@ -134,9 +134,12 @@ class RemixPlaybackEngine {
                 Thread.sleep(20)
                 continue
             }
-            val framesThisChunk = minOf(framesPerChunk, original.frameCount - frame)
+            val framesThisChunk = minOf(framesPerChunk, instrumental.frameCount - frame)
             val currentGains = gains
-            AudioMixer.renderChunk(original.samples, vocalBandMid, userVocal.samples, frame, framesThisChunk, currentGains, scratch)
+            AudioMixer.renderChunk(
+                instrumental.samples, originalVocalStem.samples, userVocal.samples,
+                frame, framesThisChunk, currentGains, scratch
+            )
 
             // Diagnose: einmal pro Sekunde die aktuellen Fader-Werte sowie den Peak der
             // eigenen Stimme in diesem Ausschnitt loggen — beweist, ob userVocal-Samples

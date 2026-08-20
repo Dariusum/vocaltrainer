@@ -1,36 +1,34 @@
 package com.example.vocaltrainer.audio
 
 /**
- * Klassische Mitte-Kanal-Auslöschung ("Karaoke-Trick") für interleaviertes Stereo-PCM,
- * begrenzt auf das per [VocalBandFilter] vorberechnete, phasenfehlerfreie
- * Gesangs-Frequenzband. Funktioniert nur bei echten Stereo-Aufnahmen mit mittig
- * abgemischtem Gesang — siehe Hilfe-Seite in der App für die Einschränkungen.
+ * Mischt Instrumental- und Original-Gesangs-Stem für den Vorhör-Regler auf dem
+ * Wiedergabe-Screen: bei k=0 klingt es wie das Original (Instrumental + voller Gesang),
+ * bei k=1 bleibt nur das Instrumental übrig. Nutzt die von [VocalSeparator] getrennten
+ * echten Stems statt einer Frequenzband-Näherung — Instrumental + Gesang ergeben per
+ * Konstruktion exakt wieder das Original.
  */
 object VocalReducer {
 
     /**
-     * Wendet die Auslöschung auf [frames] Stereo-Frames ab [offsetFrames] in [src] an
-     * und schreibt das Ergebnis ab Index 0 nach [dst]. [vocalBandMid] muss dieselbe
-     * Framezahl wie [src] abdecken (siehe [VocalBandFilter.computeVocalBandMid]).
-     * [k]=0 lässt das Signal unverändert, [k]=1 löscht den Gesangsanteil maximal aus.
+     * Wendet die Reduzierung auf [frames] Stereo-Frames ab [offsetFrames] an und schreibt
+     * das Ergebnis ab Index 0 nach [dst]. [k]=0 lässt das Signal unverändert (Original),
+     * [k]=1 lässt nur das Instrumental übrig.
      */
-    fun applyCancellation(
-        src: ShortArray,
-        vocalBandMid: FloatArray,
+    fun applyReduction(
+        instrumental: ShortArray,
+        vocal: ShortArray,
         dst: ShortArray,
         offsetFrames: Int,
         frames: Int,
         k: Float
     ) {
+        val vocalGain = 1f - k
         for (i in 0 until frames) {
             val frame = offsetFrames + i
             val li = frame * 2
             val ri = li + 1
-            val l = src[li].toInt()
-            val r = src[ri].toInt()
-            val band = vocalBandMid[frame]
-            dst[i * 2] = clampToShort(l - k * band)
-            dst[i * 2 + 1] = clampToShort(r - k * band)
+            dst[i * 2] = clampToShort(instrumental[li] + vocalGain * vocal[li])
+            dst[i * 2 + 1] = clampToShort(instrumental[ri] + vocalGain * vocal[ri])
         }
     }
 

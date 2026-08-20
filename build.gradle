@@ -1,5 +1,9 @@
 plugins {
     id 'com.android.application' version '8.9.2' apply false
-    id 'org.jetbrains.kotlin.android' version '2.1.20' apply false
-    id 'com.google.devtools.ksp' version '2.1.20-1.0.32' apply false
+    // Auf 2.3.0 angehoben (Phase B): com.google.ai.edge.litert:litert-api:2.1.6 wurde mit
+    // Kotlin-Metadaten-Version 2.3.0 kompiliert, ältere Kotlin-Versionen scheitern beim
+    // Kompilieren mit "Module was compiled with an incompatible version of Kotlin".
+    id 'org.jetbrains.kotlin.android' version '2.3.0' apply false
+    // KSP war ungenutzt (kein Room/Annotation-Processing in dieser App) — entfernt statt
+    // auf eine zu 2.3.0 passende Version hochzuziehen.
 }

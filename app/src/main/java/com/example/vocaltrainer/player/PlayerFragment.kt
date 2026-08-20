@@ -68,13 +68,6 @@ class PlayerFragment : Fragment() {
 
         binding.switchLoop.setOnCheckedChangeListener { _, checked -> viewModel.setLoopEnabled(checked) }
 
-        binding.rangeSliderBand.addOnChangeListener { slider, _, fromUser ->
-            if (fromUser) {
-                val values = slider.values
-                viewModel.setBandRange(values[0], values[1])
-            }
-        }
-
         binding.btnRecord.setOnClickListener {
             if (viewModel.isRecording.value) {
                 viewModel.stopRecording()
@@ -117,25 +110,6 @@ class PlayerFragment : Fragment() {
             viewModel.events.collect { event -> handleEvent(event) }
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.bandLowHz.collect { low ->
-                if (binding.rangeSliderBand.values.getOrNull(0) != low) {
-                    binding.rangeSliderBand.setValues(low, viewModel.bandHighHz.value)
-                }
-                updateBandRangeLabel()
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.bandHighHz.collect { high ->
-                if (binding.rangeSliderBand.values.getOrNull(1) != high) {
-                    binding.rangeSliderBand.setValues(viewModel.bandLowHz.value, high)
-                }
-                updateBandRangeLabel()
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.isRecalculatingBand.collect { recalculating -> updateBandRangeLabel(recalculating) }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.vocalReduction.collect { value ->
                 val target = value * 100f
                 if (binding.sliderVocalReduction.value != target) {
@@ -143,15 +117,14 @@ class PlayerFragment : Fragment() {
                 }
             }
         }
-    }
-
-    private fun updateBandRangeLabel(recalculating: Boolean = viewModel.isRecalculatingBand.value) {
-        val low = viewModel.bandLowHz.value.toInt()
-        val high = viewModel.bandHighHz.value.toInt()
-        binding.tvBandRange.text = if (recalculating) {
-            "${getString(R.string.label_band_range)}: $low–$high Hz (${getString(R.string.band_recalculating)})"
-        } else {
-            "${getString(R.string.label_band_range)}: $low–$high Hz"
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isSeparatingVocals.collect { separating ->
+                if (viewModel.trackState.value is TrackUiState.Loading) {
+                    binding.tvTrackName.text = getString(
+                        if (separating) R.string.vocal_separation_in_progress else R.string.decode_in_progress
+                    )
+                }
+            }
         }
     }
 

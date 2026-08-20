@@ -15,9 +15,9 @@ enum class PlaybackState { STOPPED, PLAYING, PAUSED }
 /**
  * Spielt einen einzelnen Track über [AudioTrack] im Streaming-Modus ab und wendet dabei
  * live die Gesangsreduzierung ([VocalReducer]) an — nur ein Vorhör-Regler, verändert
- * weder die Original-PCM noch das, was währenddessen aufgenommen wird. [vocalBandMid]
- * muss vorab per [VocalBandFilter.computeVocalBandMid] berechnet worden sein (nur bei
- * Stereo-Tracks nötig/vorhanden).
+ * weder die Original-PCM noch das, was währenddessen aufgenommen wird. [VocalSeparator]
+ * muss vorab die Stems berechnet haben (nur bei Stereo-Tracks nötig/vorhanden); bei Mono
+ * oder fehlender Trennung wird [instrumental] unverändert abgespielt.
  */
 class LivePlaybackEngine {
 
@@ -37,14 +37,16 @@ class LivePlaybackEngine {
     private val _finished = MutableStateFlow(false)
     val finished: StateFlow<Boolean> = _finished.asStateFlow()
 
-    fun start(pcm: PcmAudio, vocalBandMid: FloatArray?, startFrame: Int = 0) {
+    fun start(instrumental: PcmAudio, vocal: PcmAudio?, startFrame: Int = 0) {
         stop()
         _finished.value = false
         stopRequested.set(false)
         pauseRequested.set(false)
 
-        val channelConfig = if (pcm.channelCount == 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
-        val minBufferSize = AudioTrack.getMinBufferSize(pcm.sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT)
+        val channelConfig =
+            if (instrumental.channelCount == 2) AudioFormat.CHANNEL_OUT_STEREO else AudioFormat.CHANNEL_OUT_MONO
+        val minBufferSize =
+            AudioTrack.getMinBufferSize(instrumental.sampleRate, channelConfig, AudioFormat.ENCODING_PCM_16BIT)
         val bufferSize = maxOf(minBufferSize, 8192)
 
         val track = AudioTrack.Builder()
@@ -57,7 +59,7 @@ class LivePlaybackEngine {
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(pcm.sampleRate)
+                    .setSampleRate(instrumental.sampleRate)
                     .setChannelMask(channelConfig)
                     .build()
             )
@@ -68,7 +70,7 @@ class LivePlaybackEngine {
         track.play()
         _state.value = PlaybackState.PLAYING
 
-        val thread = Thread { playLoop(pcm, vocalBandMid, startFrame, track, bufferSize) }
+        val thread = Thread { playLoop(instrumental, vocal, startFrame, track, bufferSize) }
         thread.name = "LivePlaybackEngine"
         playThread = thread
         thread.start()
@@ -106,16 +108,17 @@ class LivePlaybackEngine {
         _state.value = PlaybackState.STOPPED
     }
 
-    private fun playLoop(pcm: PcmAudio, vocalBandMid: FloatArray?, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int) {
-        val channelCount = pcm.channelCount
+    private fun playLoop(instrumental: PcmAudio, vocal: PcmAudio?, startFrame: Int, track: AudioTrack, bufferSizeBytes: Int) {
+        val channelCount = instrumental.channelCount
         val framesPerChunk = (bufferSizeBytes / 2 / channelCount).coerceAtLeast(1)
         val scratch = ShortArray(framesPerChunk * channelCount)
         var frame = startFrame
         var framesSinceLastLog = 0
-        val logIntervalFrames = pcm.sampleRate // ~einmal pro Sekunde Wiedergabe
+        val logIntervalFrames = instrumental.sampleRate // ~einmal pro Sekunde Wiedergabe
+        val useStems = channelCount == 2 && vocal != null
 
         while (!stopRequested.get()) {
-            if (frame >= pcm.frameCount) {
+            if (frame >= instrumental.frameCount) {
                 if (loopEnabled) {
                     frame = 0
                     continue
@@ -128,32 +131,32 @@ class LivePlaybackEngine {
                 Thread.sleep(20)
                 continue
             }
-            val framesThisChunk = minOf(framesPerChunk, pcm.frameCount - frame)
+            val framesThisChunk = minOf(framesPerChunk, instrumental.frameCount - frame)
             val k = vocalReduction
-            val cancellationApplied = channelCount == 2 && k > 0f && vocalBandMid != null
 
-            if (cancellationApplied) {
-                VocalReducer.applyCancellation(pcm.samples, vocalBandMid!!, scratch, frame, framesThisChunk, k)
+            if (useStems) {
+                VocalReducer.applyReduction(instrumental.samples, vocal.samples, scratch, frame, framesThisChunk, k)
             } else {
-                System.arraycopy(pcm.samples, frame * channelCount, scratch, 0, framesThisChunk * channelCount)
+                System.arraycopy(instrumental.samples, frame * channelCount, scratch, 0, framesThisChunk * channelCount)
             }
 
-            // Diagnose: einmal pro Sekunde tatsächlich messen, wie stark sich das Signal
-            // durch die Auslöschung verändert hat — beweist, ob k wirklich am Sample
-            // ankommt (statt nur zu vermuten, dass die Regler-Verkabelung stimmt).
+            // Diagnose: einmal pro Sekunde den Peak des abgetrennten Gesangs-Stems in diesem
+            // Ausschnitt loggen — beweist, ob das Modell für den aktuellen Abschnitt
+            // überhaupt nennenswerten Gesang erkannt hat (statt nur zu vermuten).
             framesSinceLastLog += framesThisChunk
             if (framesSinceLastLog >= logIntervalFrames) {
                 framesSinceLastLog = 0
-                var maxDiff = 0
-                val srcOffset = frame * channelCount
-                for (i in 0 until framesThisChunk * channelCount) {
-                    val diff = abs(scratch[i] - pcm.samples[srcOffset + i])
-                    if (diff > maxDiff) maxDiff = diff
+                var vocalPeak = 0
+                if (useStems) {
+                    val srcOffset = frame * channelCount
+                    for (i in 0 until framesThisChunk * channelCount) {
+                        val a = abs(vocal.samples[srcOffset + i].toInt())
+                        if (a > vocalPeak) vocalPeak = a
+                    }
                 }
                 VocaltrainerLogger.d(
                     "LivePlaybackEngine",
-                    "Frame $frame: k=$k, cancellationApplied=$cancellationApplied, " +
-                        "vocalBandMid vorhanden=${vocalBandMid != null}, maxDiff=$maxDiff"
+                    "Frame $frame: k=$k, useStems=$useStems, vocalPeak=$vocalPeak"
                 )
             }
 

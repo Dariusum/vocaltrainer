@@ -18,12 +18,10 @@
     <string name="recording_in_progress">Aufnahme läuft…</string>
     <string name="record_permission_denied">Ohne Mikrofonzugriff kann nicht aufgenommen werden</string>
     <string name="decode_in_progress">Datei wird geladen…</string>
+    <string name="vocal_separation_in_progress">Gesang wird per KI abgetrennt (kann eine Weile dauern)…</string>
     <string name="decode_error">Datei konnte nicht geladen werden</string>
     <string name="action_restart">Von vorne</string>
     <string name="label_loop">Schleife</string>
-    <string name="band_range_desc">Nur dieser Frequenzbereich wird bei der Gesangsreduzierung ausgelöscht — z.B. verbreitern, wenn noch zu viel Gesang übrig bleibt, oder verschmälern, wenn zu viele Instrumente betroffen sind.</string>
-    <string name="label_band_range">Frequenzband</string>
-    <string name="band_recalculating">wird neu berechnet…</string>
 
     <!-- Speichern-Dialog -->
     <string name="save_recording_title">Aufnahme speichern</string>
@@ -43,7 +41,7 @@
     <string name="fader_master">Gesamtlautstärke</string>
     <string name="fader_user_vocal">Deine Stimme (bis 200 % verstärkbar)</string>
     <string name="fader_original_vocal">Original-Gesang</string>
-    <string name="fader_original_vocal_desc">Wirkt nur auf den geschätzten Gesangsanteil in der Mitte des Original-Tracks — Schlagzeug, Bass und breit gepannte Instrumente bleiben davon unberührt und bleiben gleich laut.</string>
+    <string name="fader_original_vocal_desc">Regelt den per KI abgetrennten Gesang aus dem Original-Track — Schlagzeug, Bass und Instrumente bleiben davon unberührt.</string>
     <string name="action_export">Exportieren</string>
     <string name="export_in_progress">Export läuft…</string>
     <string name="export_success">Export abgeschlossen</string>

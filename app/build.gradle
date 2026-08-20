@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'com.google.devtools.ksp'
 }
 
 def versionNameStr = System.getenv("VERSION_NAME") ?: "dev"
@@ -55,6 +54,11 @@ android {
         viewBinding true
         buildConfig true
     }
+    androidResources {
+        // .tflite darf nicht komprimiert in die APK gepackt werden, sonst kann die
+        // Modell-Datei nicht per mmap direkt aus den Assets geladen werden.
+        noCompress += "tflite"
+    }
 }
 
 androidComponents {
@@ -80,4 +84,10 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
     implementation 'androidx.activity:activity-ktx:1.8.2'
+
+    // On-device KI-Stimmtrennung (Phase B) — LiteRT (Nachfolger von TensorFlow Lite)
+    implementation 'com.google.ai.edge.litert:litert:2.1.6'
+
+    // Nur für lokale JVM-Tests der FFT/STFT-Mathematik (kein Android-Framework nötig)
+    testImplementation 'junit:junit:4.13.2'
 }

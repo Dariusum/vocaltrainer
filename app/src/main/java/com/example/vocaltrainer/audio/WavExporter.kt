@@ -18,20 +18,23 @@ object WavExporter {
     private const val CHUNK_FRAMES = 65536
 
     suspend fun export(
-        original: PcmAudio,
-        vocalBandMid: FloatArray,
+        instrumental: PcmAudio,
+        originalVocalStem: PcmAudio,
         userVocal: PcmAudio,
         gains: MixGains,
         out: OutputStream
     ) = withContext(Dispatchers.IO) {
         val tempFile = File.createTempFile("vocaltrainer_export", ".wav")
         try {
-            val writer = WavFileWriter(tempFile, original.sampleRate, 2)
+            val writer = WavFileWriter(tempFile, instrumental.sampleRate, 2)
             val scratch = ShortArray(CHUNK_FRAMES * 2)
             var frame = 0
-            while (frame < original.frameCount) {
-                val framesThisChunk = minOf(CHUNK_FRAMES, original.frameCount - frame)
-                AudioMixer.renderChunk(original.samples, vocalBandMid, userVocal.samples, frame, framesThisChunk, gains, scratch)
+            while (frame < instrumental.frameCount) {
+                val framesThisChunk = minOf(CHUNK_FRAMES, instrumental.frameCount - frame)
+                AudioMixer.renderChunk(
+                    instrumental.samples, originalVocalStem.samples, userVocal.samples,
+                    frame, framesThisChunk, gains, scratch
+                )
                 writer.writeFrames(scratch, 0, framesThisChunk * 2)
                 frame += framesThisChunk
             }

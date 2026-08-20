@@ -15,7 +15,8 @@
         android:roundIcon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Vocaltrainer">
+        android:theme="@style/Theme.Vocaltrainer"
+        android:largeHeap="true">
 
         <activity
             android:name=".MainActivity"

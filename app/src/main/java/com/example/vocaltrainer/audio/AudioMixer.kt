@@ -13,42 +13,41 @@ data class MixGains(val master: Float, val userVocal: Float, val originalVocal: 
 /**
  * Misch-Mathematik, geteilt zwischen Live-Remix-Wiedergabe und Export — beide rufen
  * exakt dieselbe Funktion auf, damit Vorschau und exportierte Datei garantiert
- * übereinstimmen. Der "Original-Gesang"-Fader nutzt dieselbe vorberechnete,
- * phasenfehlerfreie Mitte-Kanal-Auslöschung wie der Vorhör-Regler im Wiedergabe-Tab
- * (siehe [VocalBandFilter]), nur mit invertiertem Parameter (k = 1 - originalVocalFader).
+ * übereinstimmen. Nutzt die von [VocalSeparator] getrennten echten Stems (Instrumental +
+ * Original-Gesang) statt einer Frequenzband-Näherung: der "Original-Gesang"-Fader steuert
+ * direkt die Lautstärke des tatsächlich abgetrennten Gesangs-Stems.
  */
 object AudioMixer {
 
     /**
-     * [original]: interleaviertes Stereo-PCM des unveränderten Original-Tracks.
-     * [vocalBandMid]: vorberechnetes, phasenfehlerfreies Gesangsband für [original]
-     * (siehe [VocalBandFilter.computeVocalBandMid]).
+     * [instrumental]: interleaviertes Stereo-PCM des Instrumental-Stems (Original minus
+     * abgetrennter Original-Gesang).
+     * [originalVocalStem]: interleaviertes Stereo-PCM des abgetrennten Original-Gesangs.
      * [userVocal]: mono PCM der Aufnahme (kann kürzer als der Track sein — fehlende
      * Abschnitte werden als Stille behandelt, nie länger als der Original-Track).
      * Schreibt [frames] Stereo-Frames ab [offsetFrames] nach [out] (ab Index 0).
      */
     fun renderChunk(
-        original: ShortArray,
-        vocalBandMid: FloatArray,
+        instrumental: ShortArray,
+        originalVocalStem: ShortArray,
         userVocal: ShortArray,
         offsetFrames: Int,
         frames: Int,
         gains: MixGains,
         out: ShortArray
     ) {
-        val k = 1f - gains.originalVocal
         for (i in 0 until frames) {
             val frame = offsetFrames + i
-            val oi = frame * 2
-            val l = original[oi].toInt()
-            val r = original[oi + 1].toInt()
-            val band = vocalBandMid[frame]
-            val vocalReducedL = l - k * band
-            val vocalReducedR = r - k * band
+            val li = frame * 2
+            val ri = li + 1
+            val instL = instrumental[li].toInt()
+            val instR = instrumental[ri].toInt()
+            val vocL = originalVocalStem[li].toInt()
+            val vocR = originalVocalStem[ri].toInt()
             val userSample = if (frame < userVocal.size) userVocal[frame].toInt() else 0
 
-            out[i * 2] = softLimit(gains.master * (vocalReducedL + gains.userVocal * userSample))
-            out[i * 2 + 1] = softLimit(gains.master * (vocalReducedR + gains.userVocal * userSample))
+            out[i * 2] = softLimit(gains.master * (instL + gains.originalVocal * vocL + gains.userVocal * userSample))
+            out[i * 2 + 1] = softLimit(gains.master * (instR + gains.originalVocal * vocR + gains.userVocal * userSample))
         }
     }
 
