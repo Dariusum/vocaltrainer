@@ -82,10 +82,10 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:enabled="false"
+                android:contentDescription="@string/action_previous"
                 app:icon="@drawable/ic_action_skip_previous"
-                app:iconGravity="textStart"
-                app:iconPadding="4dp"
-                android:text="@string/action_previous" />
+                app:iconPadding="0dp"
+                app:iconGravity="textStart" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayPause"
@@ -94,10 +94,10 @@
                 android:layout_weight="2"
                 android:layout_marginStart="8dp"
                 android:enabled="false"
+                android:contentDescription="@string/action_play"
                 app:icon="@drawable/ic_action_play"
-                app:iconGravity="textStart"
-                app:iconPadding="4dp"
-                android:text="@string/action_play" />
+                app:iconPadding="0dp"
+                app:iconGravity="textStart" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNext"
@@ -107,10 +107,10 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:enabled="false"
+                android:contentDescription="@string/action_next"
                 app:icon="@drawable/ic_action_skip_next"
-                app:iconGravity="textStart"
-                app:iconPadding="4dp"
-                android:text="@string/action_next" />
+                app:iconPadding="0dp"
+                app:iconGravity="textStart" />
 
         </LinearLayout>
 
@@ -121,8 +121,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:enabled="false"
+            android:contentDescription="@string/action_restart"
             app:icon="@drawable/ic_action_replay"
-            android:text="@string/action_restart" />
+            app:iconPadding="0dp"
+            app:iconGravity="textStart" />
 
         <LinearLayout
             android:layout_width="match_parent"

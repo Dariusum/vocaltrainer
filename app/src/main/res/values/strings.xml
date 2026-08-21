@@ -3,6 +3,7 @@
     <string name="app_name">Vocaltrainer</string>
 
     <string name="nav_player">Wiedergabe</string>
+    <string name="playback_notification_channel">Wiedergabe</string>
     <string name="nav_recordings">Aufnahmen</string>
     <string name="nav_playlists">Playlists</string>
     <string name="nav_help">Hilfe</string>
