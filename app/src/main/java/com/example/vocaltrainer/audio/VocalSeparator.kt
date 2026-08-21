@@ -40,7 +40,9 @@ class SeparatedStems(val vocal: PcmAudio, val instrumental: PcmAudio)
  */
 object VocalSeparator {
 
-    private const val MODEL_ASSET = "models/UVR-MDX-NET-Voc_FT.fp16acc.tflite"
+    // internal statt private: StemsCache muss den aktuellen Modellnamen kennen, um zu
+    // erkennen, ob ein zwischengespeicherter Stems-Eintrag noch von diesem Modell stammt.
+    internal const val MODEL_ASSET = "models/UVR-MDX-NET-Voc_FT.fp16acc.tflite"
     private const val N_FFT = 6144
     private const val HOP = 1024
     private const val DIM_F = 3072

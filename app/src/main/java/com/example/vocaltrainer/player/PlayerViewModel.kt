@@ -19,6 +19,7 @@ import com.example.vocaltrainer.audio.VocalSeparator
 import com.example.vocaltrainer.data.QueueEntry
 import com.example.vocaltrainer.data.RecentTracksStore
 import com.example.vocaltrainer.data.RecordingRepository
+import com.example.vocaltrainer.data.StemsCache
 import com.example.vocaltrainer.log.VocaltrainerLogger
 import com.example.vocaltrainer.ui.widget.WaveformPeaks
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +63,8 @@ sealed class PlayerEvent {
 class PlayerViewModel(
     application: Application,
     private val repository: RecordingRepository,
-    private val recentTracksStore: RecentTracksStore
+    private val recentTracksStore: RecentTracksStore,
+    private val stemsCache: StemsCache
 ) : AndroidViewModel(application) {
 
     private val livePlaybackEngine = LivePlaybackEngine()
@@ -185,10 +187,16 @@ class PlayerViewModel(
                 recentTracksStore.recordPlayed(uri, fileName)
                 _recentTracks.value = recentTracksStore.getRecent()
 
-                val stems = if (pcm.channelCount == 2) {
+                val cached = if (pcm.channelCount == 2) stemsCache.get(uri, pcm.frameCount, pcm.sampleRate) else null
+                val stems = if (cached != null) {
+                    VocaltrainerLogger.i("PlayerViewModel", "Stems aus Cache geladen (Trennung übersprungen)")
+                    cached
+                } else if (pcm.channelCount == 2) {
                     _isSeparatingVocals.value = true
                     try {
-                        VocalSeparator.separate(getApplication(), pcm)
+                        VocalSeparator.separate(getApplication(), pcm).also {
+                            stemsCache.put(uri, pcm.frameCount, pcm.sampleRate, it)
+                        }
                     } finally {
                         _isSeparatingVocals.value = false
                     }
@@ -346,10 +354,11 @@ class PlayerViewModel(
     class Factory(
         private val application: Application,
         private val repository: RecordingRepository,
-        private val recentTracksStore: RecentTracksStore
+        private val recentTracksStore: RecentTracksStore,
+        private val stemsCache: StemsCache
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayerViewModel(application, repository, recentTracksStore) as T
+            PlayerViewModel(application, repository, recentTracksStore, stemsCache) as T
     }
 }

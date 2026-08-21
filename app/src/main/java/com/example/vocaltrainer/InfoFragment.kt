@@ -11,13 +11,18 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.vocaltrainer.databinding.FragmentInfoBinding
 import com.example.vocaltrainer.log.VocaltrainerLogger
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 class InfoFragment : Fragment() {
 
     private var _binding: FragmentInfoBinding? = null
     private val binding get() = _binding!!
+
+    private val vocaltrainerApp by lazy { requireActivity().application as VocaltrainerApp }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -39,6 +44,25 @@ class InfoFragment : Fragment() {
         binding.btnClearLog.setOnClickListener {
             VocaltrainerLogger.clear()
             Toast.makeText(requireContext(), R.string.log_cleared, Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnClearStemsCache.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                vocaltrainerApp.stemsCache.clear()
+                Toast.makeText(requireContext(), R.string.stems_cache_cleared, Toast.LENGTH_SHORT).show()
+                refreshStemsCacheSize()
+            }
+        }
+        refreshStemsCacheSize()
+    }
+
+    private fun refreshStemsCacheSize() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val bytes = vocaltrainerApp.stemsCache.currentSizeBytes()
+            val megabytes = bytes / (1024.0 * 1024.0)
+            binding.tvStemsCacheSize.text = getString(
+                R.string.stems_cache_size, String.format(Locale.getDefault(), "%.1f MB", megabytes)
+            )
         }
     }
 

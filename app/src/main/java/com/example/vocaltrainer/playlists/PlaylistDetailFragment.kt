@@ -40,7 +40,8 @@ class PlaylistDetailFragment : Fragment() {
         PlayerViewModel.Factory(
             requireActivity().application,
             vocaltrainerApp.recordingRepository,
-            vocaltrainerApp.recentTracksStore
+            vocaltrainerApp.recentTracksStore,
+            vocaltrainerApp.stemsCache
         )
     }
 

@@ -27,7 +27,12 @@ class RemixFragment : Fragment() {
     private val vocaltrainerApp by lazy { requireActivity().application as VocaltrainerApp }
 
     private val viewModel: RemixViewModel by viewModels {
-        RemixViewModel.Factory(requireActivity().application, projectId, vocaltrainerApp.recordingRepository)
+        RemixViewModel.Factory(
+            requireActivity().application,
+            projectId,
+            vocaltrainerApp.recordingRepository,
+            vocaltrainerApp.stemsCache
+        )
     }
 
     private val exportLauncher = registerForActivityResult(

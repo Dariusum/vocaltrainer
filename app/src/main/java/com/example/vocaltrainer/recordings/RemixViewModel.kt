@@ -1,6 +1,7 @@
 package com.example.vocaltrainer.recordings
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -14,6 +15,7 @@ import com.example.vocaltrainer.audio.SeparatedStems
 import com.example.vocaltrainer.audio.VocalSeparator
 import com.example.vocaltrainer.audio.WavExporter
 import com.example.vocaltrainer.data.RecordingRepository
+import com.example.vocaltrainer.data.StemsCache
 import com.example.vocaltrainer.log.VocaltrainerLogger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,7 +42,8 @@ sealed class RemixEvent {
 class RemixViewModel(
     application: Application,
     private val projectId: String,
-    private val repository: RecordingRepository
+    private val repository: RecordingRepository,
+    private val stemsCache: StemsCache
 ) : AndroidViewModel(application) {
 
     private val remixPlaybackEngine = RemixPlaybackEngine()
@@ -75,7 +78,15 @@ class RemixViewModel(
                     ?: throw IllegalStateException("Aufnahme nicht gefunden")
                 val (originalPcm, vocalPcm) = repository.loadProjectAudio(projectId)
                 userVocal = vocalPcm
-                stems = VocalSeparator.separate(getApplication(), originalPcm)
+                // Synthetische URI statt einer echten Datei-URI: die Original-Aufnahme liegt
+                // app-intern (recordings/<uuid>/original.wav), aber projectId ist bereits eine
+                // stabile, eindeutige Kennung — ausreichend als Cache-Schlüssel.
+                val cacheUri = Uri.parse("vocaltrainer://recording/$projectId")
+                val cached = stemsCache.get(cacheUri, originalPcm.frameCount, originalPcm.sampleRate)
+                stems = cached ?: VocalSeparator.separate(getApplication(), originalPcm).also {
+                    stemsCache.put(cacheUri, originalPcm.frameCount, originalPcm.sampleRate, it)
+                }
+                VocaltrainerLogger.i("RemixViewModel", "Stems ${if (cached != null) "aus Cache geladen" else "neu getrennt"}")
                 _gains.value = MixGains(
                     master = project.lastFaderMaster,
                     userVocal = project.lastFaderUserVocal,
@@ -162,10 +173,11 @@ class RemixViewModel(
     class Factory(
         private val application: Application,
         private val projectId: String,
-        private val repository: RecordingRepository
+        private val repository: RecordingRepository,
+        private val stemsCache: StemsCache
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            RemixViewModel(application, projectId, repository) as T
+            RemixViewModel(application, projectId, repository, stemsCache) as T
     }
 }

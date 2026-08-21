@@ -68,6 +68,12 @@
     <string name="github_version">GitHub-Version: %s</string>
     <string name="action_view_releases">Neueste Version auf GitHub ansehen</string>
 
+    <!-- Stems-Cache -->
+    <string name="settings_stems_cache_title">Getrennte Titel (Cache)</string>
+    <string name="stems_cache_size">Belegter Speicher: %s</string>
+    <string name="action_clear_stems_cache">Cache leeren</string>
+    <string name="stems_cache_cleared">Cache geleert</string>
+
     <!-- Diagnose -->
     <string name="settings_diagnostics_title">Diagnose</string>
     <string name="settings_diagnostics_desc">Log-Datei zur Fehlersuche (z.B. bei Abstürzen)</string>
