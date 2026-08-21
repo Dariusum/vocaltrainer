@@ -50,6 +50,13 @@ class PlaylistDetailViewModel(
         }
     }
 
+    fun renameTrack(index: Int, newName: String) {
+        viewModelScope.launch {
+            repository.renameTrack(playlistId, index, newName)
+            refresh()
+        }
+    }
+
     fun removeTrack(index: Int) {
         viewModelScope.launch {
             repository.removeTrack(playlistId, index)

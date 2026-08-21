@@ -18,7 +18,10 @@ import com.example.vocaltrainer.audio.SeparatedStems
 import com.example.vocaltrainer.audio.TrackDecoder
 import com.example.vocaltrainer.audio.VocalRecorder
 import com.example.vocaltrainer.audio.VocalSeparator
+import com.example.vocaltrainer.data.PlaylistRepository
 import com.example.vocaltrainer.data.QueueEntry
+import com.example.vocaltrainer.data.RecentEntry
+import com.example.vocaltrainer.data.RecentPlaylistsStore
 import com.example.vocaltrainer.data.RecentTracksStore
 import com.example.vocaltrainer.data.RecordingRepository
 import com.example.vocaltrainer.data.StemsCache
@@ -44,6 +47,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 sealed class TrackUiState {
     object Idle : TrackUiState()
@@ -70,6 +76,8 @@ class PlayerViewModel(
     application: Application,
     private val repository: RecordingRepository,
     private val recentTracksStore: RecentTracksStore,
+    private val recentPlaylistsStore: RecentPlaylistsStore,
+    private val playlistRepository: PlaylistRepository,
     private val stemsCache: StemsCache
 ) : AndroidViewModel(application), PlaybackSource {
 
@@ -85,8 +93,21 @@ class PlayerViewModel(
     val playbackState: StateFlow<PlaybackState> = livePlaybackEngine.state
     val positionFrames: StateFlow<Int> = livePlaybackEngine.positionFrames
 
-    private val _recentTracks = MutableStateFlow(recentTracksStore.getRecent())
-    val recentTracks: StateFlow<List<QueueEntry>> = _recentTracks.asStateFlow()
+    private val _recentItems = MutableStateFlow(buildRecentItems())
+    val recentItems: StateFlow<List<RecentEntry>> = _recentItems.asStateFlow()
+
+    /** Merged, chronologisch sortiert aus Einzeltiteln und Playlisten — siehe [RecentEntry]. */
+    private fun buildRecentItems(): List<RecentEntry> {
+        val tracks = recentTracksStore.getRecentTimestamped().map { (ts, entry) -> ts to RecentEntry.Track(entry) }
+        val playlists = recentPlaylistsStore.getRecentTimestamped().map { (ts, info) ->
+            ts to RecentEntry.PlaylistEntry(info.id, info.title)
+        }
+        return (tracks + playlists).sortedByDescending { it.first }.take(MAX_RECENT_DISPLAY).map { it.second }
+    }
+
+    private fun refreshRecentItems() {
+        _recentItems.value = buildRecentItems()
+    }
 
     // Nur gesetzt, wenn die Wiedergabe aus einer Playlist oder der Schnellauswahl gestartet
     // wurde — direktes Wählen über den Datei-Picker (pickFile) bleibt bewusst ein Einzeltitel
@@ -199,13 +220,31 @@ class PlayerViewModel(
         loadTrack(uri, fallbackName = "Track", autoPlay = false)
     }
 
-    /** Startet Wiedergabe einer Playlist/Schnellauswahl ab [startIndex]; aktiviert Vor/Zurück. */
-    fun playFromQueue(queue: List<QueueEntry>, startIndex: Int) {
+    /**
+     * Startet Wiedergabe einer Playlist/Schnellauswahl ab [startIndex]; aktiviert Vor/Zurück.
+     * [playlistId]/[playlistTitle] nur gesetzt, wenn die Warteschlange eine echte, gespeicherte
+     * Playlist ist (nicht die Schnellauswahl-Liste selbst) — merkt sie dann für die
+     * "Zuletzt gespielt"-Anzeige vor.
+     */
+    fun playFromQueue(queue: List<QueueEntry>, startIndex: Int, playlistId: String? = null, playlistTitle: String? = null) {
         if (startIndex !in queue.indices) return
         _currentQueue.value = queue
         _currentQueueIndex.value = startIndex
+        if (playlistId != null && playlistTitle != null) {
+            recentPlaylistsStore.recordPlayed(playlistId, playlistTitle)
+            refreshRecentItems()
+        }
         val entry = queue[startIndex]
         loadTrack(entry.uri, fallbackName = entry.displayName, autoPlay = true)
+    }
+
+    /** Tippen auf eine Playlist in der Schnellauswahl — startet sie ab dem ersten Titel. */
+    fun playRecentPlaylistEntry(id: String, title: String) {
+        viewModelScope.launch {
+            val playlist = playlistRepository.getPlaylist(id) ?: return@launch
+            if (playlist.tracks.isEmpty()) return@launch
+            playFromQueue(playlist.tracks, 0, playlistId = id, playlistTitle = title)
+        }
     }
 
     fun playNext() {
@@ -252,7 +291,7 @@ class PlayerViewModel(
 
                 val fileName = queryFileName(uri) ?: fallbackName
                 recentTracksStore.recordPlayed(uri, fileName)
-                _recentTracks.value = recentTracksStore.getRecent()
+                refreshRecentItems()
 
                 val cached = if (pcm.channelCount == 2) stemsCache.get(uri, pcm.frameCount, pcm.sampleRate) else null
                 val stems = if (cached != null) {
@@ -327,6 +366,31 @@ class PlayerViewModel(
     }
 
     /**
+     * Springt an die per [fraction] (0..1) angegebene Position im aktuell geladenen Track —
+     * ausgelöst durch Tippen/Wischen auf [com.example.vocaltrainer.ui.widget.WaveformView].
+     * [LivePlaybackEngine] unterstützt kein echtes In-Place-Seeking, daher Stop+Neustart an der
+     * Zielposition; war die Wiedergabe zuvor pausiert oder gestoppt, bleibt sie danach pausiert
+     * (nur die Position ändert sich), statt ungefragt loszuspielen.
+     */
+    fun seekToFraction(fraction: Float) {
+        val state = _trackState.value
+        if (state !is TrackUiState.Loaded || _isRecording.value) return
+        val totalFrames = state.instrumental.frameCount
+        if (totalFrames <= 0) return
+        val targetFrame = (fraction.coerceIn(0f, 1f) * totalFrames).toInt().coerceIn(0, totalFrames - 1)
+        val wasPlaying = playbackState.value == PlaybackState.PLAYING
+
+        ensurePlaybackServiceRunning()
+        audioFocus.requestFocus(
+            onLoss = { livePlaybackEngine.pause() },
+            onGain = { livePlaybackEngine.resume() }
+        )
+        livePlaybackEngine.setVocalReduction(_vocalReduction.value)
+        livePlaybackEngine.start(state.instrumental, state.stems?.vocal, startFrame = targetFrame)
+        if (!wasPlaying) livePlaybackEngine.pause()
+    }
+
+    /**
      * Aufrufer (PlayerFragment) müssen RECORD_AUDIO bereits gewährt haben, bevor diese
      * Methode erreicht wird — entweder über den direkten ContextCompat-Check oder über
      * den Callback von RequestPermission(). Lint erkennt Letzteres nicht statisch,
@@ -392,7 +456,9 @@ class PlayerViewModel(
 
     private fun defaultTitle(): String {
         val state = _trackState.value
-        return if (state is TrackUiState.Loaded) state.fileName.substringBeforeLast('.') else "Aufnahme"
+        val songName = if (state is TrackUiState.Loaded) state.fileName.substringBeforeLast('.') else "Aufnahme"
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        return "${songName}_$timestamp"
     }
 
     private fun queryFileName(uri: Uri): String? {
@@ -417,10 +483,18 @@ class PlayerViewModel(
         private val application: Application,
         private val repository: RecordingRepository,
         private val recentTracksStore: RecentTracksStore,
+        private val recentPlaylistsStore: RecentPlaylistsStore,
+        private val playlistRepository: PlaylistRepository,
         private val stemsCache: StemsCache
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PlayerViewModel(application, repository, recentTracksStore, stemsCache) as T
+            PlayerViewModel(
+                application, repository, recentTracksStore, recentPlaylistsStore, playlistRepository, stemsCache
+            ) as T
+    }
+
+    companion object {
+        private const val MAX_RECENT_DISPLAY = 15
     }
 }

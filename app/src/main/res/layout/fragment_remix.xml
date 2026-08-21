@@ -130,5 +130,16 @@
             android:enabled="false"
             android:text="@string/action_export" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDeleteRecording"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:enabled="false"
+            app:strokeColor="@color/colorRecording"
+            android:textColor="@color/colorRecording"
+            android:text="@string/action_delete_recording" />
+
     </LinearLayout>
 </ScrollView>

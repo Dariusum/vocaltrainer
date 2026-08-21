@@ -51,6 +51,7 @@
     <string name="confirm_delete_playlist_message">„%s“ wird unwiderruflich gelöscht (die enthaltenen Titel bleiben erhalten).</string>
     <string name="playlist_detail_empty">Noch keine Titel — tippe auf „+“, um einen hinzuzufügen.</string>
     <string name="action_add_track">Titel hinzufügen</string>
+    <string name="action_rename_track">Umbenennen</string>
     <string name="confirm_remove_track_title">Titel entfernen?</string>
     <string name="confirm_remove_track_message">„%s“ wird aus dieser Playlist entfernt.</string>
     <string name="action_reseparate_playlist">Playlist neu trennen</string>
@@ -64,6 +65,7 @@
     <string name="fader_original_vocal">Original-Gesang</string>
     <string name="fader_original_vocal_desc">Regelt den per KI abgetrennten Gesang aus dem Original-Track — Schlagzeug, Bass und Instrumente bleiben davon unberührt.</string>
     <string name="action_export">Exportieren</string>
+    <string name="action_delete_recording">Aufnahme löschen</string>
     <string name="export_in_progress">Export läuft…</string>
     <string name="export_success">Export abgeschlossen</string>
     <string name="export_error">Export fehlgeschlagen</string>

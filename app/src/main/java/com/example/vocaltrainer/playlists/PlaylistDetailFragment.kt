@@ -7,6 +7,7 @@ import android.provider.OpenableColumns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -46,6 +47,8 @@ class PlaylistDetailFragment : Fragment() {
             requireActivity().application,
             vocaltrainerApp.recordingRepository,
             vocaltrainerApp.recentTracksStore,
+            vocaltrainerApp.recentPlaylistsStore,
+            vocaltrainerApp.playlistRepository,
             vocaltrainerApp.stemsCache
         )
     }
@@ -76,7 +79,7 @@ class PlaylistDetailFragment : Fragment() {
 
         adapter = PlaylistTrackAdapter(
             onClick = { position -> playTrack(position) },
-            onLongClick = { position -> confirmRemove(position) }
+            onLongClick = { position -> showTrackActions(position) }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
@@ -125,16 +128,42 @@ class PlaylistDetailFragment : Fragment() {
     }
 
     private fun playTrack(position: Int) {
-        val tracks = viewModel.playlist.value?.tracks ?: return
-        playerViewModel.playFromQueue(tracks, position)
+        val playlist = viewModel.playlist.value ?: return
+        playerViewModel.playFromQueue(playlist.tracks, position, playlistId = playlist.id, playlistTitle = playlist.title)
         (requireActivity() as? MainActivity)?.navigateToPlayerTab()
     }
 
-    private fun confirmRemove(position: Int) {
+    private fun showTrackActions(position: Int) {
         val entry = viewModel.playlist.value?.tracks?.getOrNull(position) ?: return
         AlertDialog.Builder(requireContext())
+            .setTitle(entry.displayName)
+            .setItems(arrayOf(getString(R.string.action_rename_track), getString(R.string.action_delete))) { _, which ->
+                when (which) {
+                    0 -> showRenameDialog(position, entry.displayName)
+                    1 -> confirmRemove(position, entry.displayName)
+                }
+            }
+            .show()
+    }
+
+    private fun showRenameDialog(position: Int, currentName: String) {
+        val input = EditText(requireContext())
+        input.setText(currentName)
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.action_rename_track)
+            .setView(input)
+            .setPositiveButton(R.string.action_save) { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) viewModel.renameTrack(position, name)
+            }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
+    }
+
+    private fun confirmRemove(position: Int, displayName: String) {
+        AlertDialog.Builder(requireContext())
             .setTitle(R.string.confirm_remove_track_title)
-            .setMessage(getString(R.string.confirm_remove_track_message, entry.displayName))
+            .setMessage(getString(R.string.confirm_remove_track_message, displayName))
             .setPositiveButton(R.string.action_delete) { _, _ -> viewModel.removeTrack(position) }
             .setNegativeButton(R.string.dialog_cancel, null)
             .show()

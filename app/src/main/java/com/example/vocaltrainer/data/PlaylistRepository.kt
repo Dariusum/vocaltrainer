@@ -54,6 +54,16 @@ class PlaylistRepository(private val context: Context) {
         writeTracks(dir, playlist.tracks.filterIndexed { i, _ -> i != index })
     }
 
+    /** Ändert nur den Anzeigenamen eines Titels — die URI (und damit die Quelldatei) bleibt unverändert. */
+    suspend fun renameTrack(playlistId: String, index: Int, newName: String) = withContext(Dispatchers.IO) {
+        val dir = File(rootDir, playlistId)
+        val playlist = loadPlaylist(dir) ?: return@withContext
+        if (index !in playlist.tracks.indices) return@withContext
+        val updated = playlist.tracks.toMutableList()
+        updated[index] = updated[index].copy(displayName = newName)
+        writeTracks(dir, updated)
+    }
+
     suspend fun deletePlaylist(id: String) = withContext(Dispatchers.IO) {
         File(rootDir, id).deleteRecursively()
         Unit

@@ -37,6 +37,7 @@ sealed class RemixUiState {
 sealed class RemixEvent {
     object ExportSuccess : RemixEvent()
     data class ExportError(val message: String) : RemixEvent()
+    object Deleted : RemixEvent()
 }
 
 class RemixViewModel(
@@ -161,6 +162,15 @@ class RemixViewModel(
             } finally {
                 _isExporting.value = false
             }
+        }
+    }
+
+    fun deleteRecording() {
+        viewModelScope.launch {
+            remixPlaybackEngine.stop()
+            repository.deleteProject(projectId)
+            VocaltrainerLogger.i("RemixViewModel", "Aufnahme gelöscht: $projectId")
+            _events.emit(RemixEvent.Deleted)
         }
     }
 

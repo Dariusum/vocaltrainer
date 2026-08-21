@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.vocaltrainer.R
 import com.example.vocaltrainer.VocaltrainerApp
 import com.example.vocaltrainer.audio.PlaybackState
+import com.example.vocaltrainer.data.RecentEntry
 import com.example.vocaltrainer.databinding.FragmentPlayerBinding
 import com.example.vocaltrainer.recordings.RemixFragment
 import kotlinx.coroutines.launch
@@ -44,6 +45,8 @@ class PlayerFragment : Fragment() {
             requireActivity().application,
             vocaltrainerApp.recordingRepository,
             vocaltrainerApp.recentTracksStore,
+            vocaltrainerApp.recentPlaylistsStore,
+            vocaltrainerApp.playlistRepository,
             vocaltrainerApp.stemsCache
         )
     }
@@ -87,10 +90,9 @@ class PlayerFragment : Fragment() {
         binding.btnRestart.setOnClickListener { viewModel.restart() }
         binding.btnPrevious.setOnClickListener { viewModel.playPrevious() }
         binding.btnNext.setOnClickListener { viewModel.playNext() }
+        binding.waveformView.setOnSeekListener { fraction -> viewModel.seekToFraction(fraction) }
 
-        recentTrackAdapter = RecentTrackAdapter { position ->
-            viewModel.playFromQueue(viewModel.recentTracks.value, position)
-        }
+        recentTrackAdapter = RecentTrackAdapter { position -> handleRecentClick(position) }
         binding.recyclerRecentTracks.layoutManager =
             LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         binding.recyclerRecentTracks.adapter = recentTrackAdapter
@@ -142,9 +144,9 @@ class PlayerFragment : Fragment() {
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.recentTracks.collect { tracks ->
-                recentTrackAdapter.submitList(tracks)
-                val visibility = if (tracks.isEmpty()) View.GONE else View.VISIBLE
+            viewModel.recentItems.collect { items ->
+                recentTrackAdapter.submitList(items)
+                val visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
                 binding.tvRecentTracksLabel.visibility = visibility
                 binding.recyclerRecentTracks.visibility = visibility
             }
@@ -232,6 +234,20 @@ class PlayerFragment : Fragment() {
         binding.btnPlayPause.setIconResource(
             if (playing) R.drawable.ic_action_pause else R.drawable.ic_action_play
         )
+    }
+
+    private fun handleRecentClick(position: Int) {
+        when (val item = viewModel.recentItems.value.getOrNull(position)) {
+            is RecentEntry.Track -> {
+                // Vor/Zurück soll nur zwischen den Einzeltiteln der Schnellauswahl springen,
+                // nicht über dazwischenliegende Playlist-Einträge hinweg.
+                val trackEntries = viewModel.recentItems.value.filterIsInstance<RecentEntry.Track>().map { it.entry }
+                val index = trackEntries.indexOf(item.entry)
+                if (index >= 0) viewModel.playFromQueue(trackEntries, index)
+            }
+            is RecentEntry.PlaylistEntry -> viewModel.playRecentPlaylistEntry(item.id, item.title)
+            null -> Unit
+        }
     }
 
     private fun requestRecordPermissionAndStart() {

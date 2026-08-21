@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -61,6 +62,7 @@ class RemixFragment : Fragment() {
         binding.btnPlayPause.setOnClickListener { viewModel.togglePlayPause() }
         binding.btnRestart.setOnClickListener { viewModel.restart() }
         binding.btnExport.setOnClickListener { exportLauncher.launch("${sanitizedTitle()}-mix.wav") }
+        binding.btnDeleteRecording.setOnClickListener { confirmDelete() }
         binding.switchLoop.setOnCheckedChangeListener { _, checked -> viewModel.setLoopEnabled(checked) }
 
         val listener = Slider.OnChangeListener { _, _, fromUser -> if (fromUser) emitGains() }
@@ -101,6 +103,7 @@ class RemixFragment : Fragment() {
                 binding.btnPlayPause.isEnabled = false
                 binding.btnRestart.isEnabled = false
                 binding.btnExport.isEnabled = false
+                binding.btnDeleteRecording.isEnabled = false
             }
             is RemixUiState.Ready -> {
                 binding.progressLoading.visibility = View.GONE
@@ -108,6 +111,7 @@ class RemixFragment : Fragment() {
                 binding.btnPlayPause.isEnabled = true
                 binding.btnRestart.isEnabled = true
                 binding.btnExport.isEnabled = true
+                binding.btnDeleteRecording.isEnabled = true
             }
             is RemixUiState.Error -> {
                 binding.progressLoading.visibility = View.GONE
@@ -138,7 +142,20 @@ class RemixFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.export_success, Toast.LENGTH_SHORT).show()
             is RemixEvent.ExportError ->
                 Toast.makeText(requireContext(), event.message, Toast.LENGTH_LONG).show()
+            is RemixEvent.Deleted ->
+                parentFragmentManager.popBackStack()
         }
+    }
+
+    private fun confirmDelete() {
+        val state = viewModel.uiState.value
+        val title = if (state is RemixUiState.Ready) state.title else ""
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.confirm_delete_recording_title)
+            .setMessage(getString(R.string.confirm_delete_recording_message, title))
+            .setPositiveButton(R.string.action_delete) { _, _ -> viewModel.deleteRecording() }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     private fun sanitizedTitle(): String {

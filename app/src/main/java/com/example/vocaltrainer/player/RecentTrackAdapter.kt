@@ -8,11 +8,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.vocaltrainer.R
-import com.example.vocaltrainer.data.QueueEntry
+import com.example.vocaltrainer.data.RecentEntry
 
 class RecentTrackAdapter(
     private val onClick: (Int) -> Unit
-) : ListAdapter<QueueEntry, RecentTrackAdapter.ViewHolder>(DIFF_CALLBACK) {
+) : ListAdapter<RecentEntry, RecentTrackAdapter.ViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_recent_track, parent, false)
@@ -26,16 +26,24 @@ class RecentTrackAdapter(
     inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvName: TextView = itemView.findViewById(R.id.tvRecentTrackName)
 
-        fun bind(entry: QueueEntry, position: Int) {
-            tvName.text = entry.displayName
+        fun bind(item: RecentEntry, position: Int) {
+            tvName.text = when (item) {
+                is RecentEntry.Track -> item.entry.displayName
+                is RecentEntry.PlaylistEntry -> "📁 ${item.title}"
+            }
             tvName.setOnClickListener { onClick(position) }
         }
     }
 
     companion object {
-        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<QueueEntry>() {
-            override fun areItemsTheSame(oldItem: QueueEntry, newItem: QueueEntry) = oldItem.uri == newItem.uri
-            override fun areContentsTheSame(oldItem: QueueEntry, newItem: QueueEntry) = oldItem == newItem
+        private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<RecentEntry>() {
+            override fun areItemsTheSame(oldItem: RecentEntry, newItem: RecentEntry): Boolean = when {
+                oldItem is RecentEntry.Track && newItem is RecentEntry.Track -> oldItem.entry.uri == newItem.entry.uri
+                oldItem is RecentEntry.PlaylistEntry && newItem is RecentEntry.PlaylistEntry -> oldItem.id == newItem.id
+                else -> false
+            }
+
+            override fun areContentsTheSame(oldItem: RecentEntry, newItem: RecentEntry) = oldItem == newItem
         }
     }
 }

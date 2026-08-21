@@ -22,6 +22,11 @@ class RecentTracksStore(context: Context) {
 
     fun getRecent(): List<QueueEntry> = readEntries().map { QueueEntry(it.uri, it.displayName) }
 
+    /** Wie [getRecent], aber mit Zeitstempel — nötig, um mit [RecentPlaylistsStore]s Einträgen
+     * zu einer gemeinsamen, chronologisch sortierten "Zuletzt gespielt"-Liste zu verschmelzen. */
+    fun getRecentTimestamped(): List<Pair<Long, QueueEntry>> =
+        readEntries().map { it.timestampMs to QueueEntry(it.uri, it.displayName) }
+
     private fun readEntries(): List<RecentTrack> {
         val raw = prefs.getString(KEY_ENTRIES, null) ?: return emptyList()
         return raw.split("\n").mapNotNull { line -> parseLine(line) }
