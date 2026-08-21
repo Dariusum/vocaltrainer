@@ -7,6 +7,10 @@
     <!-- Kein Speicher-Permission: Datei-Auswahl/Export laufen über den
          Storage-Access-Framework-Picker (GetContent/CreateDocument), der
          keine Laufzeit-Permission benötigt. -->
+    <!-- Für Auto-/Bluetooth-Steuerung via MediaSession (Phase D): PlaybackService läuft als
+         Foreground-Service, solange Wiedergabe aktiv ist. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".VocaltrainerApp"
@@ -28,6 +32,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".playback.PlaybackService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
     </application>
 </manifest>

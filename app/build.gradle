@@ -15,7 +15,10 @@ if (versionParts.length >= 3) {
 
 android {
     namespace 'com.example.vocaltrainer'
-    compileSdk 35
+    // media3-session 1.11.0 (Phase D) benötigt compileSdk >= 36. targetSdk bewusst bei 35
+    // belassen (compileSdk lässt sich laut AGP unabhängig von targetSdk/minSdk anheben, ohne
+    // neues Laufzeitverhalten zu aktivieren).
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.example.vocaltrainer"
@@ -87,6 +90,11 @@ dependencies {
 
     // On-device KI-Stimmtrennung (Phase B) — LiteRT (Nachfolger von TensorFlow Lite)
     implementation 'com.google.ai.edge.litert:litert:2.1.6'
+
+    // MediaSession + Foreground-Service für Auto/Bluetooth-Steuerung (Phase D) —
+    // media3-session bringt SimpleBasePlayer/MediaSessionService mit, kein media3-exoplayer
+    // nötig, da der eigene AudioTrack-basierte Player (LivePlaybackEngine) weiterverwendet wird.
+    implementation 'androidx.media3:media3-session:1.11.0'
 
     // Nur für lokale JVM-Tests der FFT/STFT-Mathematik (kein Android-Framework nötig)
     testImplementation 'junit:junit:4.13.2'

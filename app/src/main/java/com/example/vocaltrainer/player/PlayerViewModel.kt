@@ -2,8 +2,10 @@ package com.example.vocaltrainer.player
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -21,6 +23,10 @@ import com.example.vocaltrainer.data.RecentTracksStore
 import com.example.vocaltrainer.data.RecordingRepository
 import com.example.vocaltrainer.data.StemsCache
 import com.example.vocaltrainer.log.VocaltrainerLogger
+import com.example.vocaltrainer.playback.PlaybackService
+import com.example.vocaltrainer.playback.PlaybackSource
+import com.example.vocaltrainer.playback.PlaybackSourceRegistry
+import com.example.vocaltrainer.playback.PlaybackSourceState
 import com.example.vocaltrainer.ui.widget.WaveformPeaks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -65,7 +71,7 @@ class PlayerViewModel(
     private val repository: RecordingRepository,
     private val recentTracksStore: RecentTracksStore,
     private val stemsCache: StemsCache
-) : AndroidViewModel(application) {
+) : AndroidViewModel(application), PlaybackSource {
 
     private val livePlaybackEngine = LivePlaybackEngine()
     private var vocalRecorder: VocalRecorder? = null
@@ -93,6 +99,22 @@ class PlayerViewModel(
     val hasNext: StateFlow<Boolean> = combine(_currentQueue, _currentQueueIndex) { queue, index ->
         queue != null && index < queue.size - 1
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    // Für MediaSession/Auto/Bluetooth (Phase D) — siehe PlaybackSource. Meldet entweder die
+    // echte Warteschlange (Playlist/Schnellauswahl) oder, falls keine gesetzt ist, den aktuell
+    // geladenen Einzeltitel als 1-Element-"Liste" (kein Vor/Zurück, aber Titel/Play-Pause
+    // funktionieren trotzdem über Hardware-Tasten).
+    override val state: StateFlow<PlaybackSourceState> = combine(
+        playbackState, trackState, _currentQueue, _currentQueueIndex
+    ) { playback, track, queue, index ->
+        val currentTitle = (track as? TrackUiState.Loaded)?.fileName
+        val titles = queue?.map { it.displayName } ?: currentTitle?.let { listOf(it) } ?: emptyList()
+        PlaybackSourceState(
+            isPlaying = playback == PlaybackState.PLAYING,
+            queueTitles = titles,
+            queueIndex = if (queue != null) index else 0
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackSourceState())
 
     private val _vocalReduction = MutableStateFlow(0f)
     val vocalReduction: StateFlow<Float> = _vocalReduction.asStateFlow()
@@ -123,6 +145,51 @@ class PlayerViewModel(
             // bleibt dann wie bisher einfach gestoppt.
             playNext()
         }.launchIn(viewModelScope)
+
+        // Macht dieses ViewModel für VocalPlayerBridge (MediaSession/Auto/Bluetooth,
+        // Phase D) auffindbar, ohne dass Service und ViewModel sich direkt kennen müssen.
+        PlaybackSourceRegistry.register(this)
+    }
+
+    /** Startet [PlaybackService] (falls nicht schon aktiv), damit MediaSession/Notification bereitstehen. */
+    private fun ensurePlaybackServiceRunning() {
+        val app = getApplication<Application>()
+        ContextCompat.startForegroundService(app, Intent(app, PlaybackService::class.java))
+    }
+
+    override fun play() {
+        val state = _trackState.value
+        when (playbackState.value) {
+            PlaybackState.PAUSED -> livePlaybackEngine.resume()
+            PlaybackState.STOPPED -> {
+                if (state !is TrackUiState.Loaded || _isRecording.value) return
+                ensurePlaybackServiceRunning()
+                audioFocus.requestFocus(
+                    onLoss = { livePlaybackEngine.pause() },
+                    onGain = { livePlaybackEngine.resume() }
+                )
+                livePlaybackEngine.setVocalReduction(_vocalReduction.value)
+                livePlaybackEngine.start(state.instrumental, state.stems?.vocal)
+            }
+            PlaybackState.PLAYING -> Unit
+        }
+    }
+
+    override fun pause() {
+        livePlaybackEngine.pause()
+    }
+
+    override fun stop() {
+        livePlaybackEngine.stop()
+    }
+
+    /** Vor/Zurück von MediaSession/Auto/Bluetooth aus — no-op ohne aktive Warteschlange. */
+    override fun seekToQueueIndex(index: Int) {
+        val queue = _currentQueue.value ?: return
+        if (index !in queue.indices) return
+        _currentQueueIndex.value = index
+        val entry = queue[index]
+        loadTrack(entry.uri, fallbackName = entry.displayName, autoPlay = true)
     }
 
     fun pickFile(uri: Uri) {
@@ -209,6 +276,7 @@ class PlayerViewModel(
                 _trackState.value = TrackUiState.Loaded(pcm, peaks, fileName, stems)
                 _vocalReduction.value = 0f
                 if (autoPlay) {
+                    ensurePlaybackServiceRunning()
                     livePlaybackEngine.setVocalReduction(0f)
                     audioFocus.requestFocus(
                         onLoss = { livePlaybackEngine.pause() },
@@ -227,16 +295,8 @@ class PlayerViewModel(
         val state = _trackState.value
         if (state !is TrackUiState.Loaded) return
         when (playbackState.value) {
-            PlaybackState.PLAYING -> livePlaybackEngine.pause()
-            PlaybackState.PAUSED -> livePlaybackEngine.resume()
-            PlaybackState.STOPPED -> {
-                audioFocus.requestFocus(
-                    onLoss = { livePlaybackEngine.pause() },
-                    onGain = { livePlaybackEngine.resume() }
-                )
-                livePlaybackEngine.setVocalReduction(_vocalReduction.value)
-                livePlaybackEngine.start(state.instrumental, state.stems?.vocal)
-            }
+            PlaybackState.PLAYING -> pause()
+            PlaybackState.PAUSED, PlaybackState.STOPPED -> play()
         }
     }
 
@@ -257,6 +317,7 @@ class PlayerViewModel(
     fun restart() {
         val state = _trackState.value
         if (state !is TrackUiState.Loaded || _isRecording.value) return
+        ensurePlaybackServiceRunning()
         audioFocus.requestFocus(
             onLoss = { livePlaybackEngine.pause() },
             onGain = { livePlaybackEngine.resume() }
@@ -346,6 +407,7 @@ class PlayerViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        PlaybackSourceRegistry.unregister(this)
         livePlaybackEngine.stop()
         vocalRecorder?.stop()
         audioFocus.abandonFocus()
