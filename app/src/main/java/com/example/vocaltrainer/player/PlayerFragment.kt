@@ -226,8 +226,10 @@ class PlayerFragment : Fragment() {
     }
 
     private fun renderPlaybackState(state: PlaybackState) {
-        binding.btnPlayPause.text = getString(
-            if (state == PlaybackState.PLAYING) R.string.action_pause else R.string.action_play
+        val playing = state == PlaybackState.PLAYING
+        binding.btnPlayPause.text = getString(if (playing) R.string.action_pause else R.string.action_play)
+        binding.btnPlayPause.setIconResource(
+            if (playing) R.drawable.ic_action_pause else R.drawable.ic_action_play
         )
     }
 

@@ -82,6 +82,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:enabled="false"
+                app:icon="@drawable/ic_action_skip_previous"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
                 android:text="@string/action_previous" />
 
             <com.google.android.material.button.MaterialButton
@@ -91,6 +94,9 @@
                 android:layout_weight="2"
                 android:layout_marginStart="8dp"
                 android:enabled="false"
+                app:icon="@drawable/ic_action_play"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
                 android:text="@string/action_play" />
 
             <com.google.android.material.button.MaterialButton
@@ -101,6 +107,9 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:enabled="false"
+                app:icon="@drawable/ic_action_skip_next"
+                app:iconGravity="textStart"
+                app:iconPadding="4dp"
                 android:text="@string/action_next" />
 
         </LinearLayout>
@@ -112,6 +121,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:enabled="false"
+            app:icon="@drawable/ic_action_replay"
             android:text="@string/action_restart" />
 
         <LinearLayout

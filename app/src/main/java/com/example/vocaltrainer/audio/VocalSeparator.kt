@@ -47,6 +47,11 @@ object VocalSeparator {
     private const val FRAMES_PER_CHUNK = 256
     private const val PLANES = 4
 
+    // Experimenteller Tuning-Wert (siehe Kommentar unten bei vocalShortL/R) — ggf. nach dem
+    // nächsten Gerätetest weiter anpassen, falls 1.0=Original bei k=1 immer noch zu schwach
+    // oder umgekehrt zu artefaktbehaftet klingt.
+    private const val VOCAL_BOOST = 3.0f
+
     suspend fun separate(context: Context, pcm: PcmAudio): SeparatedStems = withContext(Dispatchers.Default) {
         require(pcm.channelCount == 2) { "Stimmtrennung benötigt Stereo-Audio" }
 
@@ -130,8 +135,16 @@ object VocalSeparator {
 
                 val origL = pcm.samples[i * 2].toInt()
                 val origR = pcm.samples[i * 2 + 1].toInt()
-                val vocalShortL = clampSample(vocalL * 32768f)
-                val vocalShortR = clampSample(vocalR * 32768f)
+                // VOCAL_BOOST verstärkt die vom Modell geschätzte Stimme, bevor daraus das
+                // Instrumental als Rest (Original - Stimme) berechnet wird. Das ist gefahrlos
+                // für k=0 (Instrumental + Stimme ergibt per Konstruktion immer exakt wieder
+                // das Original, unabhängig vom Boost-Faktor), macht aber k=1 hörbar stärker:
+                // Geräte-Logs zeigten, dass das Modell die Stimme zwar korrekt (aber mit sehr
+                // geringem Pegel, oft nur 2-5% von Vollausschlag) erkennt — ohne Boost blieb
+                // die Reduzierung dadurch trotz nachweislich korrekter Verdrahtung praktisch
+                // unhörbar.
+                val vocalShortL = clampSample(vocalL * 32768f * VOCAL_BOOST)
+                val vocalShortR = clampSample(vocalR * 32768f * VOCAL_BOOST)
                 vocalSamples[i * 2] = vocalShortL
                 vocalSamples[i * 2 + 1] = vocalShortR
                 instrumentalSamples[i * 2] = clampSample((origL - vocalShortL).toFloat())

@@ -179,7 +179,12 @@ class RecordingRepository(private val context: Context) {
         private const val VOCAL_FILE = "vocal.wav"
         private const val METADATA_FILE = "metadata.properties"
         private const val NOISE_GATE_THRESHOLD = 400
-        private const val TARGET_RMS = 6500.0
-        private const val MAX_BOOST = 8f
+        // Weiterhin als zu leise gemeldet trotz TARGET_RMS=6500 (~20% von Vollausschlag) —
+        // ein voller Musik-Mix liegt oft deutlich darüber, wodurch die Aufnahme selbst nach
+        // Normalisierung neben dem Original-Track klein blieb und der "Deine Stimme"-Regler
+        // (0-200%) nur einen bereits unauffälligen Anteil variierte. Ziel und maximaler
+        // Boost angehoben, damit auch leise Mikrofonaufnahmen deutlich hörbar werden.
+        private const val TARGET_RMS = 10000.0
+        private const val MAX_BOOST = 14f
     }
 }
