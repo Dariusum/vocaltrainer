@@ -22,9 +22,9 @@ import java.util.Properties
  * Layout: filesDir/stems_cache/<sha256(uri)>/{instrumental.wav, vocal.wav, meta.properties}.
  * Ein Treffer wird nur verwendet, wenn `frameCount`/`sampleRate` zur frisch dekodierten PCM
  * passen (die URI allein beweist nicht, dass die dahinterliegende Datei unverändert ist) und
- * das beim Trennen verwendete Modell (`modelAsset`) noch mit [VocalSeparator]s aktuellem
- * Modell übereinstimmt — sonst würde ein künftiger Modellwechsel sonst still veraltete Stems
- * weiterverwenden.
+ * sowohl das beim Trennen verwendete Modell (`modelAsset`) als auch [VocalSeparator.CACHE_VERSION]
+ * noch mit dem aktuellen Stand übereinstimmen — sonst würden ein künftiger Modellwechsel oder
+ * eine Tuning-Änderung (z.B. am Verstärkungsfaktor) still veraltete Stems weiterverwenden.
  */
 class StemsCache(private val context: Context) {
 
@@ -43,7 +43,8 @@ class StemsCache(private val context: Context) {
             metaFile.inputStream().use { props.load(it) }
             props.getProperty("frameCount")?.toIntOrNull() == frameCount &&
                 props.getProperty("sampleRate")?.toIntOrNull() == sampleRate &&
-                props.getProperty("modelAsset") == VocalSeparator.MODEL_ASSET
+                props.getProperty("modelAsset") == VocalSeparator.MODEL_ASSET &&
+                props.getProperty("cacheVersion")?.toIntOrNull() == VocalSeparator.CACHE_VERSION
         }.getOrDefault(false)
         if (!matches) return@withContext null
 
@@ -67,6 +68,7 @@ class StemsCache(private val context: Context) {
         props.setProperty("frameCount", frameCount.toString())
         props.setProperty("sampleRate", sampleRate.toString())
         props.setProperty("modelAsset", VocalSeparator.MODEL_ASSET)
+        props.setProperty("cacheVersion", VocalSeparator.CACHE_VERSION.toString())
         File(dir, METADATA_FILE).outputStream().use { props.store(it, "Vocaltrainer stems cache metadata") }
 
         evictIfOverLimit()

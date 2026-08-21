@@ -31,7 +31,12 @@ class PlaylistDetailFragment : Fragment() {
     private val vocaltrainerApp by lazy { requireActivity().application as VocaltrainerApp }
 
     private val viewModel: PlaylistDetailViewModel by viewModels {
-        PlaylistDetailViewModel.Factory(requireActivity().application, playlistId, vocaltrainerApp.playlistRepository)
+        PlaylistDetailViewModel.Factory(
+            requireActivity().application,
+            playlistId,
+            vocaltrainerApp.playlistRepository,
+            vocaltrainerApp.stemsCache
+        )
     }
 
     // Activity-weit gescoped, wie in PlayerFragment — damit ein aus der Playlist gestarteter
@@ -77,6 +82,7 @@ class PlaylistDetailFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         binding.fabAddTrack.setOnClickListener { filePicker.launch(arrayOf("audio/*")) }
+        binding.btnReseparateAll.setOnClickListener { confirmReseparateAll() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.playlist.collect { playlist ->
@@ -84,8 +90,38 @@ class PlaylistDetailFragment : Fragment() {
                 val tracks = playlist?.tracks ?: emptyList()
                 adapter.submitList(tracks)
                 binding.tvEmpty.visibility = if (tracks.isEmpty()) View.VISIBLE else View.GONE
+                binding.btnReseparateAll.isEnabled = tracks.isNotEmpty()
             }
         }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.reseparateState.collect { state ->
+                when (state) {
+                    is ReseparateState.Idle -> {
+                        binding.tvReseparateProgress.visibility = View.GONE
+                        binding.btnReseparateAll.isEnabled = !viewModel.playlist.value?.tracks.isNullOrEmpty()
+                        binding.fabAddTrack.isEnabled = true
+                    }
+                    is ReseparateState.InProgress -> {
+                        binding.tvReseparateProgress.visibility = View.VISIBLE
+                        binding.tvReseparateProgress.text = getString(
+                            R.string.reseparate_progress, state.current, state.total, state.currentTitle
+                        )
+                        binding.btnReseparateAll.isEnabled = false
+                        binding.fabAddTrack.isEnabled = false
+                    }
+                }
+            }
+        }
+    }
+
+    private fun confirmReseparateAll() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.confirm_reseparate_playlist_title)
+            .setMessage(R.string.confirm_reseparate_playlist_message)
+            .setPositiveButton(R.string.action_reseparate_playlist) { _, _ -> viewModel.reseparateAll() }
+            .setNegativeButton(R.string.dialog_cancel, null)
+            .show()
     }
 
     private fun playTrack(position: Int) {

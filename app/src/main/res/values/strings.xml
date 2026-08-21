@@ -52,6 +52,10 @@
     <string name="action_add_track">Titel hinzufügen</string>
     <string name="confirm_remove_track_title">Titel entfernen?</string>
     <string name="confirm_remove_track_message">„%s“ wird aus dieser Playlist entfernt.</string>
+    <string name="action_reseparate_playlist">Playlist neu trennen</string>
+    <string name="confirm_reseparate_playlist_title">Playlist neu trennen?</string>
+    <string name="confirm_reseparate_playlist_message">Alle Titel dieser Playlist werden per KI neu getrennt — das kann je nach Anzahl und Länge der Titel mehrere Minuten bis Stunden dauern. Vorhandene zwischengespeicherte Trennungen werden dabei überschrieben.</string>
+    <string name="reseparate_progress">Trenne %1$d/%2$d: %3$s…</string>
 
     <!-- 3-Regler-Mix -->
     <string name="fader_master">Gesamtlautstärke</string>

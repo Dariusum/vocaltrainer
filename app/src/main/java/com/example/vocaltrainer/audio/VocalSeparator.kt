@@ -40,9 +40,16 @@ class SeparatedStems(val vocal: PcmAudio, val instrumental: PcmAudio)
  */
 object VocalSeparator {
 
-    // internal statt private: StemsCache muss den aktuellen Modellnamen kennen, um zu
-    // erkennen, ob ein zwischengespeicherter Stems-Eintrag noch von diesem Modell stammt.
+    // internal statt private: StemsCache muss Modellname + Tuning-Version kennen, um zu
+    // erkennen, ob ein zwischengespeicherter Stems-Eintrag noch aktuell ist.
     internal const val MODEL_ASSET = "models/UVR-MDX-NET-Voc_FT.fp16acc.tflite"
+
+    // Bei jeder Änderung, die das Trennungsergebnis für dieselbe Eingabe verändert, OHNE dass
+    // sich MODEL_ASSET ändert (z.B. VOCAL_BOOST unten), muss dieser Wert erhöht werden — sonst
+    // würde StemsCache stillschweigend veraltete, mit der alten Tuning-Konstante berechnete
+    // Stems weiterverwenden (genau das wäre nach der VOCAL_BOOST-Einführung sonst passiert:
+    // vorher zwischengespeicherte, unverstärkte Stems hätten weiterverwendet werden können).
+    internal const val CACHE_VERSION = 2
     private const val N_FFT = 6144
     private const val HOP = 1024
     private const val DIM_F = 3072
